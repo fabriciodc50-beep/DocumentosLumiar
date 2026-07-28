@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lumiar · Central de Documentos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Poppins:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#100F0E; --bg2:#171614; --card:#1D1B19; --card2:#242220; --card3:#2B2825;
+  --linha:#2E2B27; --linha2:#3C3833;
+  --txt:#F6F3ED; --txt2:#C6C0B5; --txt3:#9A9389;
+  --gold:#C7A96B; --gold2:#E2C88E; --goldbg:rgba(199,169,107,.12); --campo:#14130F;
+  --ok:#7FA87F; --alerta:#C98A5B; --erro:#B96A6A;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --rail:236px;
+}
+[data-tema="claro"]{
+  --bg:#FAF9F6; --bg2:#F2EFE8; --card:#FFFFFF; --card2:#F6F3EC; --card3:#EDE9E0;
+  --linha:#E2DED4; --linha2:#D3CDC0;
+  --txt:#16140F; --txt2:#4A453C; --txt3:#6B6459;
+  --gold:#8a6d3f; --gold2:#6F5730; --goldbg:rgba(138,109,63,.10); --campo:#FFFFFF;
+}
+[data-tema="claro"] .btn.pri{background:var(--gold);border-color:var(--gold);color:#fff}
+[data-tema="claro"] .btn.pri:hover{background:var(--gold2);border-color:var(--gold2)}
+[data-tema="claro"] .chip[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#fff}
+[data-tema="claro"] .av{color:var(--gold)}
+[data-tema="claro"] #modal{background:rgba(80,74,64,.35)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font-family:var(--sans);font-weight:300;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select,textarea{font-family:inherit;font-size:14px;color:inherit}
+::selection{background:var(--gold);color:#141210}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--linha2);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+
+.app{display:grid;grid-template-columns:var(--rail) 1fr;height:100vh}
+
+/* ---------- barra lateral ---------- */
+.rail{background:var(--bg2);border-right:1px solid var(--linha);display:flex;flex-direction:column;min-height:0}
+.rail .topo{padding:20px 20px 16px;border-bottom:1px solid var(--linha)}
+.mark{font-family:var(--serif);font-size:21px;letter-spacing:.05em;line-height:1}
+.mark small{display:block;font-family:var(--sans);font-size:7px;letter-spacing:.32em;
+  text-transform:uppercase;color:var(--gold);margin-top:3px;font-weight:400}
+.rail nav{padding:12px 12px;flex:1;overflow-y:auto;min-height:0}
+.rail .sec{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--txt3);padding:14px 10px 6px}
+.nav{display:flex;align-items:center;gap:11px;width:100%;background:none;border:0;border-radius:10px;
+  padding:10px 11px;cursor:pointer;color:var(--txt2);text-align:left;transition:background .14s,color .14s}
+.nav:hover{background:var(--card);color:var(--txt)}
+.nav[aria-current="true"]{background:var(--goldbg);color:var(--gold)}
+.nav svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:0 0 17px}
+.nav .badge{margin-left:auto;font-size:10.5px;color:var(--txt3);background:var(--card2);border-radius:99px;padding:2px 8px}
+.rail .rodape{padding:12px 16px 16px;border-top:1px solid var(--linha);font-size:10.5px;color:var(--txt2)}
+
+/* ---------- área principal ---------- */
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.bar{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--linha);
+  background:var(--bg);flex-wrap:wrap}
+.bar h1{font-family:var(--serif);font-size:22px;font-weight:500;margin:0;flex:0 0 auto}
+.bar .sp{flex:1}
+.busca{position:relative;flex:1;min-width:180px;max-width:380px}
+.busca input{width:100%;border:1px solid var(--linha2);border-radius:11px;padding:10px 12px 10px 36px;
+  background:var(--campo);color:var(--txt)}
+.busca input:focus{outline:none;border-color:var(--gold)}
+.busca svg{position:absolute;left:12px;top:11px;width:15px;height:15px;stroke:var(--txt3);fill:none;stroke-width:1.7}
+.conteudo{flex:1;overflow-y:auto;padding:24px;min-height:0}
+.vista{max-width:1080px;margin:0 auto}
+
+.menu-btn{display:none;background:none;border:1px solid var(--linha2);border-radius:10px;padding:8px 10px;cursor:pointer}
+.menu-btn svg{width:17px;height:17px;stroke:var(--txt);fill:none;stroke-width:1.7;stroke-linecap:round}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .rail{position:fixed;inset:0 auto 0 0;width:var(--rail);z-index:60;transform:translateX(-102%);
+    transition:transform .26s cubic-bezier(.22,1,.36,1);box-shadow:0 0 40px rgba(0,0,0,.5)}
+  .rail.on{transform:translateX(0)}
+  .menu-btn{display:block}
+  .conteudo{padding:18px}
+  .bar{padding:12px 16px}
+}
+#veu{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .24s}
+#veu.on{opacity:1;pointer-events:auto}
+
+/* ---------- componentes ---------- */
+.card{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:20px}
+.card + .card{margin-top:16px}
+.card h2{font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+  margin:0 0 16px;display:flex;align-items:center;gap:10px}
+.card h2::after{content:'';flex:1;height:1px;background:var(--linha)}
+.card h3{font-family:var(--serif);font-size:18px;font-weight:500;margin:0 0 8px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--linha2);background:var(--card2);
+  color:var(--txt);border-radius:11px;padding:11px 16px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:var(--gold);background:var(--card3)}
+.btn:active{transform:scale(.985)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.pri{background:var(--gold);border-color:var(--gold);color:#141210}
+.btn.pri:hover{background:var(--gold2);border-color:var(--gold2)}
+.btn.perigo:hover{border-color:var(--erro);color:#E4A0A0}
+.btn.sm{padding:8px 12px;font-size:12.5px;border-radius:9px}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.acoes{display:flex;gap:9px;flex-wrap:wrap}
+
+label{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--txt2);margin-bottom:6px;font-weight:400}
+input:not([type=file]):not([type=checkbox]):not([type=radio]),select,textarea{
+  width:100%;border:1px solid var(--linha2);border-radius:10px;padding:11px 12px;
+  background:var(--campo);color:var(--txt);-webkit-text-fill-color:var(--txt)}
+input:-webkit-autofill{-webkit-box-shadow:0 0 0 60px var(--campo) inset;-webkit-text-fill-color:var(--txt)}
+input::placeholder,textarea::placeholder{color:var(--txt3);opacity:1}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+textarea{resize:vertical;min-height:90px;line-height:1.65;font-size:13px}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.full{grid-column:1/-1}
+
+/* chips de serviço */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:12.5px;border:1px solid var(--linha2);background:var(--campo);color:var(--txt);
+  border-radius:99px;padding:8px 14px;cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--gold);color:var(--txt)}
+.chip[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#141210}
+.chip .x{margin-left:6px;opacity:.6}
+
+/* tabela / lista */
+.tabela{width:100%;border-collapse:collapse}
+.tabela th{font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt3);
+  text-align:left;padding:0 12px 10px;font-weight:400}
+.tabela td{padding:12px;border-top:1px solid var(--linha);vertical-align:middle}
+.tabela tr{cursor:pointer}
+.tabela tbody tr:hover td{background:var(--card2)}
+.av{width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--linha2);
+  display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:14px;color:var(--gold)}
+.nome{font-size:14px}
+.meta{font-size:12px;color:var(--txt2)}
+.tag{display:inline-block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  border-radius:99px;padding:3px 9px;background:var(--card3);color:var(--txt2);border:1px solid var(--linha)}
+.tag.ok{background:rgba(127,168,127,.14);color:#9CC49C}
+.tag.g{background:var(--goldbg);color:var(--gold)}
+
+.vazio{text-align:center;padding:44px 20px;color:var(--txt3)}
+.vazio .ic{width:44px;height:44px;margin:0 auto 14px;opacity:.35}
+.vazio .ic svg{width:44px;height:44px;stroke:var(--txt2);fill:none;stroke-width:1.2}
+.vazio .t{font-size:15px;color:var(--txt2);margin-bottom:6px}
+.vazio .d{font-size:12.5px}
+
+.drop{display:block;border:1px dashed var(--linha2);background:var(--bg2);border-radius:13px;
+  padding:26px 16px;text-align:center;cursor:pointer;transition:.2s}
+.drop:hover,.drop.over{border-color:var(--gold);background:#1C1A16}
+.drop .t{font-size:13.5px;margin-bottom:4px}
+.drop .d{font-size:11.5px;color:var(--txt3)}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;clip:rect(0 0 0 0)}
+
+/* modal */
+#modal{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;padding:20px;
+  background:rgba(8,7,6,.7);backdrop-filter:blur(6px)}
+#modal.on{display:flex}
+#modal .cx{background:var(--card);border:1px solid var(--linha2);border-radius:18px;width:100%;max-width:660px;
+  max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+#modal .cab{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px;border-bottom:1px solid var(--linha)}
+#modal .cab h3{font-family:var(--serif);font-size:20px;font-weight:500;margin:0}
+#modal .fechar{background:none;border:0;color:var(--txt3);font-size:22px;cursor:pointer;line-height:1;padding:4px 8px}
+#modal .fechar:hover{color:var(--txt)}
+#modal .corpo{padding:22px;overflow-y:auto}
+#modal .pe{padding:16px 22px;border-top:1px solid var(--linha);display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:90;
+  background:var(--card3);border:1px solid var(--linha2);border-radius:12px;padding:13px 18px;
+  font-size:13.5px;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.ok{border-color:rgba(127,168,127,.5)}
+#toast.erro{border-color:rgba(185,106,106,.5)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.docgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:11px}
+.doccard{border:1px solid var(--linha2);background:var(--bg2);border-radius:13px;padding:16px;
+  cursor:pointer;text-align:left;transition:.16s}
+.doccard:hover{border-color:var(--gold);background:var(--card2)}
+.doccard .t{font-size:14px;display:block;margin-bottom:3px}
+.doccard .d{font-size:11.5px;color:var(--txt3);display:block}
+.doccard .n{font-size:10px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;display:block;margin-top:8px}
+
+.hist{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--linha)}
+.hist .ic{width:30px;height:30px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex:0 0 30px}
+.hist .ic svg{width:14px;height:14px;stroke:var(--gold);fill:none;stroke-width:1.6}
+.hist .t{font-size:13.5px}
+.hist .m{font-size:11px;color:var(--txt3)}
+.hist .btns{margin-left:auto;display:flex;gap:6px}
+
+.dica{font-size:12.5px;color:var(--txt2);margin-top:10px;line-height:1.6}
+
+/* painel */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:14px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:18px;cursor:pointer;transition:.16s}
+.kpi:hover{border-color:var(--gold);transform:translateY(-1px)}
+.kpi .ic{width:34px;height:34px;border-radius:10px;background:var(--goldbg);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.kpi .ic svg{width:17px;height:17px;stroke:var(--gold);fill:none;stroke-width:1.6}
+.kpi .n{font-family:var(--serif);font-size:32px;line-height:1;font-weight:500}
+.kpi .r{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt3);margin-top:7px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.pgrid{grid-template-columns:1fr}}
+.donut{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.leg{display:flex;flex-direction:column;gap:9px;flex:1;min-width:160px}
+.leg .i{display:flex;align-items:center;gap:9px;font-size:12.5px}
+.leg .pt{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+.leg .v{margin-left:auto;color:var(--txt3);font-size:12px}
+.barra{margin-bottom:13px}
+.barra .lb{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px}
+.barra .lb span:last-child{color:var(--txt3)}
+.barra .tr{height:7px;background:var(--bg2);border-radius:99px;overflow:hidden}
+.barra .tr i{display:block;height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1)}
+.atalhos{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px}
+.atalho{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--linha2);
+  border-radius:13px;padding:14px 15px;cursor:pointer;text-align:left;transition:.16s}
+.atalho:hover{border-color:var(--gold);background:var(--card2)}
+.atalho .ic{width:32px;height:32px;border-radius:9px;background:var(--card);display:flex;align-items:center;justify-content:center;flex:0 0 32px}
+.atalho .ic svg{width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:1.6}
+.atalho .t{font-size:13.5px}
+.atalho .d{font-size:11px;color:var(--txt3)}
+
+/* tema */
+.tema{background:none;border:1px solid var(--linha2);border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2)}
+.tema:hover{border-color:var(--gold);color:var(--gold)}
+.tema svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6}
+
+/* pré-visualização */
+#prev{position:fixed;inset:0;z-index:80;display:none;flex-direction:column;background:var(--bg)}
+#prev.on{display:flex}
+#prev .cab{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--linha);flex-wrap:wrap}
+#prev .cab .tit{font-family:var(--serif);font-size:20px;font-weight:500}
+#prev .cab .sp{flex:1}
+#prev .aviso{font-size:11.5px;color:var(--gold);display:none}
+#prev.editando .aviso{display:block}
+#prev .area{flex:1;overflow-y:auto;padding:26px 16px 60px;background:var(--bg2)}
+#prev .papel{max-width:820px;margin:0 auto;background:#fff;color:#161513;border-radius:6px;
+  box-shadow:0 12px 40px rgba(0,0,0,.28);padding:44px 46px}
+#prev.editando .papel{outline:2px solid var(--gold);outline-offset:6px}
+@media (max-width:640px){#prev .papel{padding:26px 20px}}
+
+.var{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--goldbg);border:1px solid var(--linha2);
+  border-radius:6px;padding:3px 7px;color:var(--gold);cursor:pointer;font-weight:400}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="rail" id="rail">
+    <div class="topo"><div class="mark">Lumiar<small>Retratos</small></div></div>
+    <nav id="nav">
+      <div class="sec">Visão geral</div>
+      <button class="nav" data-v="painel"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Painel</span></button>
+      <div class="sec">Cadastro</div>
+      <button class="nav" data-v="clientes"><svg viewBox="0 0 24 24"><path d="M16 19v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 19v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg><span>Clientes</span><span class="badge" id="bg-cli">0</span></button>
+      <button class="nav" data-v="trabalhos"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Trabalhos</span><span class="badge" id="bg-tra">0</span></button>
+      <button class="nav" data-v="catalogo"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="7" cy="6" r="1"/><circle cx="7" cy="12" r="1"/><circle cx="7" cy="18" r="1"/></svg><span>Serviços</span><span class="badge" id="bg-cat">0</span></button>
+      <div class="sec">Documentos</div>
+      <button class="nav" data-v="emitir"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/></svg><span>Emitir</span></button>
+      <button class="nav" data-v="historico"><svg viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg><span>Emitidos</span><span class="badge" id="bg-doc">0</span></button>
+      <button class="nav" data-v="modelos"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>Modelos</span></button>
+      <div class="sec">Sistema</div>
+      <button class="nav" data-v="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 5 8.9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Ajustes</span></button>
+    </nav>
+    <div class="rodape">Central de Documentos · v1.0</div>
+  </aside>
+
+  <main class="main">
+    <div class="bar">
+      <button class="menu-btn" id="abrirMenu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <h1 id="titulo">Clientes</h1>
+      <div class="busca" id="cxBusca"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="busca" placeholder="Buscar…" autocomplete="off"></div>
+      <div class="sp"></div>
+      <button class="tema" id="btnTema" title="Alternar tema"></button>
+      <div class="acoes" id="acoesTopo"></div>
+    </div>
+    <div class="conteudo"><div class="vista" id="vista"></div></div>
+  </main>
+</div>
+
+<div id="veu"></div>
+<div id="modal" role="dialog" aria-modal="true">
+  <div class="cx"><div class="cab"><h3 id="mTit"></h3><button class="fechar" id="mFechar">×</button></div>
+  <div class="corpo" id="mCorpo"></div><div class="pe" id="mPe"></div></div>
+</div>
+<div id="prev">
+  <div class="cab">
+    <span class="tit" id="prevTit">Documento</span>
+    <span class="aviso">Modo de edição — clique no texto para corrigir</span>
+    <span class="sp"></span>
+    <button class="btn" id="prevVoltar">Voltar</button>
+    <button class="btn" id="prevEditar">Editar</button>
+    <button class="btn pri" id="prevImprimir">Imprimir</button>
+  </div>
+  <div class="area"><div class="papel" id="prevPapel"></div></div>
+</div>
+<div id="toast"></div>
+<input type="file" id="arqPlan" accept=".xlsx,.xls,.csv">
+<input type="file" id="arqBkp" accept=".json">
+
+<script>
+/* ══════════════ BASE ══════════════ */
+const $ = s => document.querySelector(s);
+const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!==undefined)e.innerHTML=h; return e;};
+const uid = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hoje = ()=> new Date().toLocaleDateString('pt-BR');
+const brl = n => (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = v => parseFloat(String(v??'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.'))||0;
+const dbr = iso => iso ? iso.split('-').reverse().join('/') : '';
+const ini = n => String(n||'?').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
+
+function toast(msg,tipo){ const t=$('#toast'); t.textContent=msg; t.className='on '+(tipo||'');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='',2600); }
+
+/* ══════════════ DADOS ══════════════ */
+const PADRAO = {
+  empresa:{nome:'LUMIAR RETRATOS STUDIO', cnpj:'23.754.240/0001-87',
+    end:'Avenida 15, nº 40, Centro, Guaíra – SP', tel:'(17) 99127-8704',
+    email:'lumiar.retratos.oficial@outlook.com',
+    banco:'Banco 290 — PagSeguro · Agência 0001 · Conta corrente 08328921-5',
+    fav:'Fabrício Higino Gonçalves de Carvalho', cidade:'Guaíra – SP'},
+  regras:{sinalEnsaio:30, sinalEvento:50, remEnsaio:'48 (quarenta e oito) horas', remEvento:'7 (sete) dias corridos',
+    prazoBase:30, prazoMedio:40, limiteBase:40, limiteMedio:60,
+    taxaDomingo:150, taxaCustodia:30, taxaReenvio:80, taxaDiagramacao:40, taxaExterno:150,
+    diasBackup:90, diasRetirada:30, prazoProdutos:90, diasPagarExtras:3},
+  categorias:{ensaio:'Ensaios', evento:'Eventos', produto:'Produtos', revelacao:'Revelações'},
+  catalogo:[
+    ...['Gestante','Newborn','Bebês · 1 aninho','Infantil','Pré-adolescente','Família','Feminino',
+        'Lookbook','Intimista','Boudoir','Casal','Pré-wedding','Book de 15 anos','Ensaio de beca',
+        'Retrato profissional'].map(n=>({cat:'ensaio',nome:n,valor:0,obs:''})),
+    ...['Casamento','Casamento civil','15 anos','Chá revelação','Chá de bebê','Batizado',
+        'Aniversário infantil','Aniversário adulto e bodas','Formatura'].map(n=>({cat:'evento',nome:n,valor:0,obs:''})),
+    ...['Álbum 20×20','Álbum 25×25','Álbum 30×30','Álbum dos pais','Caixa para álbum',
+        'Quadro emoldurado','Tela em canvas','Acrílico','Composição de parede','Caixa de fotografias',
+        'Ampliação emoldurada','Porta-retrato','Tela de assinaturas','Mini álbum','Arquivos em caixa'
+       ].map(n=>({cat:'produto',nome:n,valor:0,obs:''})),
+    ...['Revelação 10×15','Revelação 13×18','Revelação 15×21','Revelação 20×30','Revelação 30×40',
+        'Revelação 40×60','Impressão fine art','Retoque avulso tradicional','Retoque avulso VIP',
+        'Retoque avulso fine art','Imagem adicional','Taxa de envio do laboratório'
+       ].map(n=>({cat:'revelacao',nome:n,valor:0,obs:''}))
+  ]
+};
+
+PADRAO.catalogo.forEach(x=>x.id = Math.random().toString(36).slice(2,9));
+let DB = {clientes:[], trabalhos:[], docs:[], modelos:{}, config:JSON.parse(JSON.stringify(PADRAO)), seq:1};
+
+const store = {
+  carregar(){ try{ const d=JSON.parse(localStorage.getItem('lumiar-docs')||'null');
+      if(d){ DB = Object.assign(DB,d); DB.config = Object.assign(JSON.parse(JSON.stringify(PADRAO)), d.config||{}); }
+      if(!DB.config.catalogo || !DB.config.catalogo.length) DB.config.catalogo = JSON.parse(JSON.stringify(PADRAO.catalogo));
+      DB.config.catalogo.forEach(x=>{ if(!x.id) x.id = uid(); });
+      if(!DB.config.categorias) DB.config.categorias = PADRAO.categorias;
+    }catch(e){} },
+  salvar(){ try{ localStorage.setItem('lumiar-docs', JSON.stringify(DB)); }catch(e){ toast('Não foi possível salvar neste navegador','erro'); } }
+};
+
+/* ══════════════ MODELOS ══════════════ */
+const CAMPOS = ['nome','cpf','rg','nasc','tel','email','endereco','conheceu',
+  'categoria','nicho','plano','qtd','data','hora','local','servicos','produtos','itens',
+  'total','sinal','saldo','pct','avisoRem','hoje','numero',
+  'empresa','cnpj','endEmpresa','telEmpresa','emailEmpresa','banco','favorecido','cidade',
+  'prazoBase','prazoMedio','limiteBase','limiteMedio','taxaDomingo','taxaCustodia','taxaReenvio',
+  'taxaDiagramacao','taxaExterno','diasBackup','diasRetirada','prazoProdutos','diasPagarExtras'];
+
+const MOD = {
+contrato:{nome:'Contrato de prestação de serviços', desc:'com anexos de imagem e dados', tpl:`
+<h1>Contrato de Prestação de Serviços Fotográficos</h1>
+<p class="sub">{{categoria}}{{#nicho}} · {{nicho}}{{/nicho}} · emitido em {{hoje}}</p>
+
+<h2>Partes</h2>
+<div class="dupla">
+<div class="bloco">
+<div class="lin"><span class="r">Contratante</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF/CNPJ</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">RG</span><span class="v">{{rg}}</span></div>
+<div class="lin"><span class="r">Telefone</span><span class="v">{{tel}}</span></div>
+<div class="lin"><span class="r">E-mail</span><span class="v">{{email}}</span></div>
+<div class="lin"><span class="r">Endereço</span><span class="v">{{endereco}}</span></div></div>
+<div class="bloco">
+<div class="lin"><span class="r">Contratada</span><span class="v">{{empresa}}</span></div>
+<div class="lin"><span class="r">CNPJ</span><span class="v">{{cnpj}}</span></div>
+<div class="lin"><span class="r">Endereço</span><span class="v">{{endEmpresa}}</span></div>
+<div class="lin"><span class="r">Telefone</span><span class="v">{{telEmpresa}}</span></div>
+<div class="lin"><span class="r">E-mail</span><span class="v">{{emailEmpresa}}</span></div></div></div>
+<p style="margin-top:12px">As partes celebram o presente contrato, regido pelas cláusulas seguintes e pela legislação aplicável, em especial o Código de Defesa do Consumidor (Lei nº 8.078/1990), a Lei de Direitos Autorais (Lei nº 9.610/1998) e a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).</p>
+
+<h2>O que foi contratado</h2>
+<div class="dupla">
+<div class="bloco">
+<div class="lin"><span class="r">Plano</span><span class="v">{{plano}}</span></div>
+<div class="lin"><span class="r">Imagens tratadas</span><span class="v">{{qtd}}</span></div>
+<div class="lin"><span class="r">Serviços</span><span class="v">{{servicos}}</span></div>
+<div class="lin"><span class="r">Produtos</span><span class="v">{{produtos}}</span></div></div>
+<div class="bloco">
+<div class="lin"><span class="r">Data</span><span class="v">{{data}}</span></div>
+<div class="lin"><span class="r">Horário</span><span class="v">{{hora}}</span></div>
+<div class="lin"><span class="r">Local</span><span class="v">{{local}}</span></div>
+<div class="lin"><span class="r">Valor total</span><span class="v">R$ {{total}}</span></div>
+<div class="lin"><span class="r">Reserva</span><span class="v">R$ {{sinal}}</span></div>
+<div class="lin"><span class="r">Saldo</span><span class="v">R$ {{saldo}}</span></div></div></div>
+
+<h2>Cláusula 1ª — Objeto</h2>
+<p>Prestação de serviços de fotografia autoral, compreendendo planejamento, direção, captação, curadoria, tratamento e entrega das imagens, conforme o plano acima.</p>
+<span class="par"><b>§1º</b> Não integram a entrega os arquivos brutos (RAW) nem as imagens descartadas na curadoria.</span>
+<span class="par"><b>§2º</b> A CONTRATADA responde pela técnica; a expressão e a participação da CONTRATANTE integram o resultado e não são passíveis de correção posterior.</span>
+
+<h2>Cláusula 2ª — Reserva da data</h2>
+<p>A data será reservada mediante cumprimento cumulativo de: assinatura deste contrato, preenchimento do cadastro e compensação do valor de reserva, correspondente a <b>{{pct}}</b> do total.</p>
+<span class="par"><b>Parágrafo único.</b> O valor tem natureza de sinal (arras), nos termos dos arts. 417 a 420 do Código Civil.</span>
+
+<h2>Cláusula 3ª — Pagamento</h2>
+<p>Aceitos PIX, dinheiro, transferência e cartão de crédito ou débito em até 12 parcelas. O saldo deve estar quitado até a data do trabalho.</p>
+<div class="bloco"><div class="lin"><span class="r">Instituição</span><span class="v">{{banco}}</span></div>
+<div class="lin"><span class="r">Favorecido</span><span class="v">{{favorecido}}</span></div>
+<div class="lin"><span class="r">PIX</span><span class="v">{{telEmpresa}}</span></div></div>
+<span class="par"><b>§1º</b> Sobre valores em atraso incidem multa de 2% e juros de 1% ao mês, além de correção monetária (art. 52, §1º, CDC).</span>
+<span class="par"><b>§2º</b> O atraso suspende a execução e a entrega até a regularização.</span>
+
+<h2>Cláusula 4ª — Prazos</h2>
+<p>Prazos em dias úteis, de segunda a sexta, excluídos feriados nacionais e municipais de {{cidade}}.</p>
+<table><tr><th>Etapa</th><th>Prazo</th></tr>
+<tr><td>Galeria para seleção</td><td>até 5 dias úteis</td></tr>
+<tr><td>Seleção pela CONTRATANTE</td><td>até 10 dias corridos</td></tr>
+<tr><td>Tratamento e entrega</td><td>conforme Cláusula 5ª</td></tr>
+<tr><td>Galeria e link ativos</td><td>{{diasBackup}} dias corridos da entrega</td></tr></table>
+<span class="par"><b>§1º</b> Não havendo seleção em 10 dias, a CONTRATADA poderá realizá-la por critério técnico, dentro da quantidade contratada.</span>
+<span class="par"><b>§2º</b> Cabe à CONTRATANTE baixar e manter cópia das imagens em dois locais distintos durante os {{diasBackup}} dias.</span>
+<span class="par"><b>§3º</b> Após esse período, a recuperação custa R$ {{taxaReenvio}},00, em até 15 dias, sem garantia. Após 1 ano, o reenvio corresponde a 30% do valor do serviço.</span>
+
+<h2>Cláusula 5ª — Acréscimos e prazo de entrega</h2>
+<p>A seleção é ato único. O conjunto escolhido é registrado em <b>Ordem de Serviço</b>, com prazo e valor. Acréscimos podem ser contratados a qualquer tempo por Ordem de Serviço, sem novo contrato.</p>
+<div class="destaque"><b>Todo acréscimo é pago antes da produção.</b> A Ordem de Serviço só se torna eficaz com a confirmação do pagamento.</div>
+<table><tr><th>Imagens selecionadas</th><th>Prazo de entrega</th></tr>
+<tr><td>até {{limiteBase}}</td><td>{{prazoBase}} dias úteis</td></tr>
+<tr><td>de {{limiteBase}} a {{limiteMedio}}</td><td>{{prazoMedio}} dias úteis</td></tr>
+<tr><td>acima de {{limiteMedio}}</td><td>definido na Ordem de Serviço</td></tr></table>
+<span class="par"><b>§1º</b> Edições especiais possuem prazo próprio, somado ao acima.</span>
+<span class="par"><b>§2º</b> O prazo conta da conclusão da seleção <b>e</b> da quitação integral, o que ocorrer por último.</span>
+<span class="par"><b>§3º</b> Não havendo pagamento dos acréscimos em até {{diasPagarExtras}} dias úteis, estes serão cancelados, e a CONTRATANTE indicará quais imagens permanecem dentro do plano. Sem indicação, a CONTRATADA seleciona por critério técnico e segue com a edição.</span>
+<span class="par"><b>§4º</b> Produtos personalizados são feitos sob medida; enviado o pedido ao laboratório, não cabe cancelamento (art. 49, parágrafo único, CDC), ressalvado vício.</span>
+
+<h2>Cláusula 6ª — Produtos físicos</h2>
+<p>Produtos inclusos no plano: até {{prazoProdutos}} dias corridos da seleção. Avulsos: prazo informado na contratação.</p>
+<span class="par"><b>§1º</b> Diagramação de álbum no estúdio sem custo; remota por aplicativo, R$ {{taxaDiagramacao}},00. Uma rodada de alterações inclusa.</span>
+<span class="par"><b>§2º</b> Retirada presencial agendada, em até {{diasRetirada}} dias corridos do aviso. Após, custódia de R$ {{taxaCustodia}},00 por mês.</span>
+<span class="par"><b>§3º</b> Vícios aparentes devem ser comunicados em até 90 dias (art. 26, CDC). Pequenas variações de cor e acabamento não configuram vício.</span>
+
+<h2>Cláusula 7ª — Remarcação</h2>
+<p>Direito a <b>uma remarcação</b>, por escrito, com antecedência mínima de <b>{{avisoRem}}</b>, conforme disponibilidade. A nova data deve ocorrer em até 90 dias corridos.</p>
+<span class="par"><b>§1º</b> Fora do prazo, ou a partir da segunda, fica sujeita à análise e a custo correspondente aos gastos assumidos.</span>
+<span class="par"><b>§2º</b> Datas em domingos e feriados: taxa de R$ {{taxaDomingo}},00, destinada à equipe de apoio já comprometida.</span>
+<span class="par"><b>§3º</b> Em sessões externas, condições climáticas impeditivas geram remarcação sem custo, cabendo a avaliação técnica à CONTRATADA.</span>
+
+<h2>Cláusula 8ª — Cancelamento</h2>
+{{#ensaio}}<table><tr><th>Antecedência do aviso</th><th>Consequência</th></tr>
+<tr><td>mais de 15 dias</td><td>crédito integral, válido por 12 meses</td></tr>
+<tr><td>entre 15 e 7 dias</td><td>crédito de 50%, válido por 12 meses</td></tr>
+<tr><td>menos de 7 dias</td><td>retenção integral do valor de reserva</td></tr></table>{{/ensaio}}
+{{#evento}}<table><tr><th>Antecedência do aviso</th><th>Consequência</th></tr>
+<tr><td>mais de 60 dias</td><td>crédito integral, válido por 12 meses</td></tr>
+<tr><td>entre 60 e 30 dias</td><td>crédito de 50%, válido por 12 meses</td></tr>
+<tr><td>menos de 30 dias</td><td>retenção integral do valor de reserva</td></tr></table>{{/evento}}
+<div class="nota"><b>Razão desta cláusula.</b> A reserva retira a data da agenda e impede sua oferta a terceiros. Quanto mais cedo o aviso, maior a chance de reaproveitamento — por isso a consequência é proporcional ao momento da comunicação.</div>
+<span class="par"><b>§1º</b> O crédito é nominal, intransferível, e seu uso depende da disponibilidade da agenda.</span>
+<span class="par"><b>§2º</b> Custos já assumidos, especialmente produtos encomendados, não integram o crédito.</span>
+<span class="par"><b>§3º</b> O não comparecimento sem aviso equipara-se ao cancelamento na faixa mais curta.</span>
+<div class="destaque"><b>Direito de arrependimento.</b> Sendo a contratação feita inteiramente fora do estabelecimento, a CONTRATANTE poderá desistir em 7 dias corridos da assinatura, com devolução integral (art. 49, CDC).</div>
+
+<h2>Cláusula 9ª — Pontualidade</h2>
+<p>O tempo contratado não compreende preparação de cabelo e maquiagem. Havendo atraso, o trabalho ocorre no tempo remanescente. Atraso superior a <b>15 minutos</b> pode ser tratado como não comparecimento.</p>
+
+<h2>Cláusula 10 — Caso fortuito e força maior</h2>
+<p>Ocorrendo evento que impeça a realização — problema grave de saúde, acidente, furto de equipamento, desastre natural, calamidade ou determinação de autoridade —, as partes definirão nova data.</p>
+<span class="par"><b>§1º</b> Não sendo possível o reagendamento por indisponibilidade da CONTRATADA, os valores serão integralmente restituídos, sem multa.</span>
+<span class="par"><b>§2º</b> Impossibilitada a atuação pessoal do fotógrafo, poderá ser indicado substituto de padrão equivalente, com concordância prévia.</span>
+
+<h2>Cláusula 11 — Direitos autorais e licença de uso</h2>
+<p>As fotografias são obras protegidas pela Lei nº 9.610/1998. A autoria e os direitos morais permanecem com a CONTRATADA, sendo inalienáveis e irrenunciáveis.</p>
+<p>A CONTRATANTE recebe <b>licença de uso pessoal, não exclusiva e por prazo indeterminado</b>, que permite imprimir, ampliar, emoldurar, exibir, presentear e publicar em perfis pessoais.</p>
+<p>A licença pessoal não abrange uso comercial, publicitário ou institucional; revenda ou sublicenciamento; nem alteração da obra — recortes que a descaracterizem, filtros, reedição ou modificação por qualquer meio, inclusive por inteligência artificial.</p>
+<span class="par"><b>Parágrafo único.</b> O uso comercial depende de licença específica, contratada à parte.</span>
+
+<h2>Cláusula 12 — Estúdio, acompanhantes e animais</h2>
+<p>Danos a equipamentos, cenários ou figurinos causados pela CONTRATANTE ou acompanhantes são de sua responsabilidade, correspondendo ao valor efetivo de reparo ou reposição, mediante comprovação documental.</p>
+<span class="par"><b>Parágrafo único.</b> Acompanhantes em número compatível com o espaço; supervisão de crianças sempre do adulto responsável. Animais admitidos mediante combinação prévia e taxa de higienização.</span>
+
+<h2>Cláusula 13 — Proteção de dados</h2>
+<p>Os dados são tratados conforme a Lei nº 13.709/2018, limitados ao necessário para a execução do contrato, compartilhados apenas com prestadores indispensáveis. Comunicações promocionais dependem de consentimento específico (Anexo II). A CONTRATANTE pode solicitar acesso, correção, portabilidade ou exclusão a qualquer tempo (art. 18).</p>
+
+<h2>Cláusula 14 — Disposições gerais</h2>
+<span class="par"><b>§1º</b> Vigora até o cumprimento integral das obrigações.</span>
+<span class="par"><b>§2º</b> Alterações somente por termo aditivo assinado.</span>
+<span class="par"><b>§3º</b> A tolerância é mera liberalidade e não implica novação.</span>
+<span class="par"><b>§4º</b> Válida a assinatura eletrônica, ainda que sem certificado digital (MP 2.200-2/2001, art. 10, §2º).</span>
+<span class="par"><b>§5º</b> A CONTRATANTE declara ter recebido o Manual do Cliente, que integra este contrato.</span>
+
+<h2>Cláusula 15 — Foro</h2>
+<p>Fica eleito o foro da Comarca de {{cidade}}, <b>ressalvado à CONTRATANTE o direito de propor ação no foro de seu domicílio</b> (art. 101, I, CDC).</p>
+<p style="margin-top:18px">{{cidade}}, {{hoje}}.</p>
+<div class="assina">
+<div class="c"><b>CONTRATANTE</b>{{nome}}<br>CPF: {{cpf}}</div>
+<div class="c"><b>CONTRATADA</b>{{empresa}}<br>CNPJ: {{cnpj}}</div></div>
+<div class="assina" style="margin-top:22px">
+<div class="c"><b>TESTEMUNHA</b>Nome:<br>CPF:</div>
+<div class="c"><b>TESTEMUNHA</b>Nome:<br>CPF:</div></div>
+
+<div style="page-break-before:always"></div>
+<h1 style="margin-top:16px">Anexo I — Autorização de uso de imagem</h1>
+<div class="destaque">Esta autorização é <b>facultativa</b>. A recusa não altera preço, prazo ou qualidade dos serviços, e pode ser revogada a qualquer momento.</div>
+<p>{{nome}} manifesta sua vontade quanto à utilização das imagens produzidas:</p>
+<div class="opt"><span class="bx"></span><span><b>Autorizo</b> a divulgação em portfólio, site, redes sociais e materiais do estúdio.</span></div>
+<div class="opt"><span class="bx"></span><span><b>Autorizo</b> também o uso em concursos, exposições e publicações do setor.</span></div>
+<div class="opt"><span class="bx"></span><span><b>Não autorizo</b> qualquer divulgação.</span></div>
+<h3>Condições</h3>
+<ul><li>Concedida a título gratuito, sem prazo determinado, enquanto não revogada.</li>
+<li>Revogável a qualquer tempo, com remoção nos meios sob controle da contratada.</li>
+<li>Materiais impressos e publicações de terceiros podem não ser removíveis.</li>
+<li>As imagens não serão cedidas a terceiros nem usadas em publicidade de outras empresas.</li></ul>
+<h3>Imagem de menor</h3>
+<p>Tratando-se de menor, a autorização é dada pelo responsável legal, observado o art. 14 da LGPD.</p>
+<div class="bloco"><div class="lin"><span class="r">Nome do menor</span><span class="v"></span></div>
+<div class="lin"><span class="r">Responsável</span><span class="v"></span></div>
+<div class="lin"><span class="r">CPF</span><span class="v"></span></div>
+<div class="lin"><span class="r">Parentesco</span><span class="v"></span></div></div>
+<div class="assina" style="margin-top:18px">
+<div class="c"><b>Assinatura</b>{{nome}}</div>
+<div class="c"><b>Data</b>{{cidade}}, ____/____/20____</div></div>
+
+<h2 style="margin-top:24px">Anexo II — Comunicações promocionais</h2>
+<div class="opt"><span class="bx"></span><span><b>Aceito</b> receber novidades, convites e condições especiais.</span></div>
+<div class="opt"><span class="bx"></span><span><b>Não aceito</b> receber comunicações.</span></div>
+<div class="assina" style="margin-top:16px">
+<div class="c"><b>Assinatura</b>{{nome}}</div>
+<div class="c"><b>Data</b>{{cidade}}, ____/____/20____</div></div>`},
+
+ordem:{nome:'Ordem de serviço', desc:'acréscimos, seleção e prazos', tpl:`
+<h1>Ordem de Serviço</h1>
+<p class="sub">nº {{numero}} · {{hoje}} · registro de itens contratados após a assinatura do contrato</p>
+<div class="dupla">
+<div class="bloco"><div class="lin"><span class="r">Cliente</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">Telefone</span><span class="v">{{tel}}</span></div></div>
+<div class="bloco"><div class="lin"><span class="r">Trabalho</span><span class="v">{{nicho}}</span></div>
+<div class="lin"><span class="r">Data</span><span class="v">{{data}}</span></div>
+<div class="lin"><span class="r">Plano</span><span class="v">{{plano}} · {{qtd}} imagens</span></div></div></div>
+
+<h2>Itens desta ordem</h2>
+<table><tr><th>Descrição</th><th style="width:56px;text-align:center">Qtd.</th><th style="width:92px;text-align:right">Valor</th></tr>
+<tr><td>&nbsp;</td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td></tr>
+<tr><td>&nbsp;</td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td></tr>
+<tr><td>&nbsp;</td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td></tr></table>
+<div class="total"><span>Total desta ordem</span><b>R$ ______________</b></div>
+
+<h2>Seleção e prazo</h2>
+<div class="bloco">
+<div class="lin"><span class="r">Imagens do plano</span><span class="v">{{qtd}}</span></div>
+<div class="lin"><span class="r">Adicionais</span><span class="v"></span></div>
+<div class="lin"><span class="r">Total selecionado</span><span class="v"></span></div>
+<div class="lin"><span class="r">Edições especiais</span><span class="v"></span></div>
+<div class="lin"><span class="r">Prazo de entrega</span><span class="v">________ dias úteis</span></div></div>
+<table><tr><th>Imagens selecionadas</th><th>Prazo</th></tr>
+<tr><td>até {{limiteBase}}</td><td>{{prazoBase}} dias úteis</td></tr>
+<tr><td>de {{limiteBase}} a {{limiteMedio}}</td><td>{{prazoMedio}} dias úteis</td></tr>
+<tr><td>acima de {{limiteMedio}}</td><td>definido nesta ordem</td></tr></table>
+
+<div class="destaque">
+<b>Quando o prazo começa.</b> Após a conclusão da seleção <b>e</b> a quitação integral, o que ocorrer por último.<br><br>
+<b>Se os adicionais não forem pagos em até {{diasPagarExtras}} dias úteis.</b> Serão cancelados, e o cliente indicará quais imagens permanecem dentro do plano. Sem indicação, a contratada seleciona por critério técnico e segue com a edição. O que já foi pago não é afetado.<br><br>
+<b>Produtos personalizados.</b> Feitos sob medida; enviado o pedido ao laboratório, não cabe cancelamento, ressalvado vício.</div>
+
+<h2>Pagamento</h2>
+<div class="bloco">
+<div class="opt"><span class="bx"></span><span>Pago no ato</span></div>
+<div class="opt"><span class="bx"></span><span>A pagar em até {{diasPagarExtras}} dias úteis, em ____/____/20____</span></div>
+<div class="lin" style="margin-top:4px"><span class="r">Forma</span><span class="v"></span></div></div>
+<p style="font-size:9.4pt;color:#4E4B44;margin-top:12px">Declaro que os itens acima correspondem ao que solicitei, que fui informado do prazo aplicável e da forma de contagem, e que esta ordem se rege pelo contrato principal e pelo Manual do Cliente.</p>
+<div class="assina"><div class="c"><b>CLIENTE</b>{{nome}}</div>
+<div class="c"><b>{{empresa}}</b>CNPJ {{cnpj}}</div></div>`},
+
+ficha:{nome:'Ficha cadastral', desc:'arquivo interno do estúdio', tpl:`
+<h1>Ficha Cadastral</h1>
+<p class="sub">Arquivo interno · emitida em {{hoje}}</p>
+<div class="bloco">
+<div class="lin"><span class="r">Nome completo</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF/CNPJ</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">RG</span><span class="v">{{rg}}</span></div>
+<div class="lin"><span class="r">Nascimento</span><span class="v">{{nasc}}</span></div>
+<div class="lin"><span class="r">Telefone</span><span class="v">{{tel}}</span></div>
+<div class="lin"><span class="r">E-mail</span><span class="v">{{email}}</span></div>
+<div class="lin"><span class="r">Endereço</span><span class="v">{{endereco}}</span></div>
+<div class="lin"><span class="r">Como conheceu</span><span class="v">{{conheceu}}</span></div></div>
+<h2>Trabalho</h2>
+<div class="bloco">
+<div class="lin"><span class="r">Categoria</span><span class="v">{{categoria}} · {{nicho}}</span></div>
+<div class="lin"><span class="r">Plano</span><span class="v">{{plano}}</span></div>
+<div class="lin"><span class="r">Imagens</span><span class="v">{{qtd}}</span></div>
+<div class="lin"><span class="r">Data / hora</span><span class="v">{{data}} · {{hora}}</span></div>
+<div class="lin"><span class="r">Local</span><span class="v">{{local}}</span></div>
+<div class="lin"><span class="r">Serviços</span><span class="v">{{servicos}}</span></div>
+<div class="lin"><span class="r">Produtos</span><span class="v">{{produtos}}</span></div>
+<div class="lin"><span class="r">Total</span><span class="v">R$ {{total}}</span></div>
+<div class="lin"><span class="r">Reserva</span><span class="v">R$ {{sinal}}</span></div>
+<div class="lin"><span class="r">Saldo</span><span class="v">R$ {{saldo}}</span></div></div>
+<h2>Anotações</h2><div class="bloco" style="min-height:130px"></div>`},
+
+entrega:{nome:'Termo de entrega', desc:'protocolo de retirada', tpl:`
+<h1>Termo de Entrega</h1>
+<p class="sub">Protocolo de retirada · {{hoje}}</p>
+<div class="bloco">
+<div class="lin"><span class="r">Cliente</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">Trabalho</span><span class="v">{{nicho}}</span></div>
+<div class="lin"><span class="r">Data da sessão</span><span class="v">{{data}}</span></div></div>
+<h2>Itens entregues</h2>
+<div class="bloco">
+<div class="opt"><span class="bx"></span><span>Imagens em alta resolução — galeria e link de download</span></div>
+<div class="opt"><span class="bx"></span><span>Álbum</span></div>
+<div class="opt"><span class="bx"></span><span>Quadros / ampliações</span></div>
+<div class="opt"><span class="bx"></span><span>Caixa de fotografias</span></div>
+<div class="opt"><span class="bx"></span><span>Arquivos em suporte físico</span></div>
+<div class="opt"><span class="bx"></span><span>Outros: ______________________________________</span></div></div>
+<div class="destaque">
+<b>Link de download ativo por {{diasBackup}} dias</b> a contar desta data. Recomendamos baixar as imagens e manter cópia em dois locais distintos. Após o prazo, a recuperação custa R$ {{taxaReenvio}},00, em até 15 dias, sem garantia; após 1 ano, corresponde a 30% do valor do serviço.<br><br>
+<b>Conferência.</b> Vícios aparentes devem ser comunicados em até 90 dias (art. 26, CDC). Pequenas variações de cor e acabamento não configuram vício.</div>
+<p style="margin-top:12px">Declaro ter recebido os itens acima, conferido as peças no ato e sido informado sobre os prazos de backup e conferência.</p>
+<div class="assina"><div class="c"><b>CLIENTE</b>{{nome}}<br>Data: ____/____/20____</div>
+<div class="c"><b>{{empresa}}</b>Recebido por:</div></div>`},
+
+newborn:{nome:'Termo newborn', desc:'saúde e manuseio do bebê', tpl:`
+<h1>Termo de Ciência e Responsabilidade</h1>
+<p class="sub">Ensaio newborn · {{hoje}}</p>
+<div class="bloco">
+<div class="lin"><span class="r">Responsável</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">Telefone</span><span class="v">{{tel}}</span></div>
+<div class="lin"><span class="r">Nome do bebê</span><span class="v"></span></div>
+<div class="lin"><span class="r">Data de nascimento</span><span class="v"></span></div>
+<div class="lin"><span class="r">Data da sessão</span><span class="v">{{data}}</span></div></div>
+<h2>Informações de saúde</h2>
+<div class="bloco">
+<div class="lin"><span class="r">Parto</span><span class="v">( ) normal ( ) cesárea</span></div>
+<div class="lin"><span class="r">Semanas</span><span class="v">( ) a termo ( ) prematuro: ____ sem.</span></div>
+<div class="lin"><span class="r">Peso atual</span><span class="v"></span></div>
+<div class="lin"><span class="r">Alergias</span><span class="v"></span></div>
+<div class="lin"><span class="r">Restrições médicas</span><span class="v"></span></div>
+<div class="lin"><span class="r">Refluxo / cólica</span><span class="v">( ) não ( ) sim</span></div>
+<div class="lin"><span class="r">Medicação em uso</span><span class="v"></span></div>
+<div class="lin"><span class="r">Observações</span><span class="v"></span></div></div>
+<h2>Declarações do responsável</h2>
+<div class="opt"><span class="bx"></span><span>Declaro que o bebê está <b>saudável</b> e apto a participar da sessão, sem sintomas de doença infectocontagiosa.</span></div>
+<div class="opt"><span class="bx"></span><span>Informei todas as condições de saúde, alergias e restrições relevantes.</span></div>
+<div class="opt"><span class="bx"></span><span>Autorizo o <b>manuseio do bebê</b> pela equipe durante a sessão, com a minha presença no ambiente.</span></div>
+<div class="opt"><span class="bx"></span><span>Fui informado de que poses mais elaboradas são obtidas por <b>composição de fotografias</b>, com um adulto apoiando o bebê durante todo o registro.</span></div>
+<div class="opt"><span class="bx"></span><span>Compreendo que a sessão respeita o ritmo do bebê, com pausas para mamada e troca, podendo durar de 2 a 4 horas.</span></div>
+<div class="opt"><span class="bx"></span><span>Compreendo que a sessão poderá ser interrompida ou remarcada, sem custo, caso o bebê não esteja bem.</span></div>
+<div class="nota"><b>Compromissos do estúdio.</b> Ambiente aquecido e higienizado; mãos, tecidos e adereços higienizados; nenhuma pose forçada; suporte físico ao bebê em todos os momentos; espaço reservado para amamentação; interrupção imediata a qualquer sinal de desconforto.</div>
+<div class="assina" style="margin-top:18px">
+<div class="c"><b>RESPONSÁVEL LEGAL</b>{{nome}}<br>CPF: {{cpf}}</div>
+<div class="c"><b>{{empresa}}</b>Data: ____/____/20____</div></div>`},
+
+autorizacao:{nome:'Autorização de imagem', desc:'documento avulso, facultativo', tpl:`
+<h1>Autorização de Uso de Imagem</h1>
+<p class="sub">Documento facultativo e revogável · {{hoje}}</p>
+<div class="bloco">
+<div class="lin"><span class="r">Nome</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">Telefone</span><span class="v">{{tel}}</span></div>
+<div class="lin"><span class="r">Trabalho</span><span class="v">{{nicho}} · {{data}}</span></div></div>
+<div class="destaque">Esta autorização é <b>facultativa</b>. A recusa não altera preço, prazo ou qualidade dos serviços, e pode ser revogada a qualquer momento pelo canal oficial.</div>
+<h2>Manifestação</h2>
+<div class="opt"><span class="bx"></span><span><b>Autorizo</b> a divulgação em portfólio, site, redes sociais e materiais do estúdio.</span></div>
+<div class="opt"><span class="bx"></span><span><b>Autorizo</b> também o uso em concursos, exposições e publicações do setor fotográfico.</span></div>
+<div class="opt"><span class="bx"></span><span><b>Autorizo</b> o uso em anúncios pagos do estúdio.</span></div>
+<div class="opt"><span class="bx"></span><span><b>Não autorizo</b> qualquer divulgação. As imagens serão de uso exclusivamente particular.</span></div>
+<h2>Condições</h2>
+<ul><li>Concedida a título gratuito, sem prazo determinado, enquanto não revogada.</li>
+<li>Revogável a qualquer tempo, com remoção nos meios sob controle do estúdio.</li>
+<li>Materiais já impressos e publicações de terceiros podem não ser removíveis.</li>
+<li>As imagens não serão cedidas a terceiros nem usadas em publicidade de outras empresas.</li></ul>
+<h2>Imagem de criança ou adolescente</h2>
+<p>Tratando-se de menor de idade, a autorização é dada exclusivamente pelo responsável legal, observado o art. 14 da Lei nº 13.709/2018 e o melhor interesse do menor.</p>
+<div class="bloco"><div class="lin"><span class="r">Nome do menor</span><span class="v"></span></div>
+<div class="lin"><span class="r">Data de nascimento</span><span class="v"></span></div>
+<div class="lin"><span class="r">Responsável</span><span class="v"></span></div>
+<div class="lin"><span class="r">CPF</span><span class="v"></span></div>
+<div class="lin"><span class="r">Parentesco</span><span class="v"></span></div></div>
+<div class="assina" style="margin-top:20px">
+<div class="c"><b>ASSINATURA</b>{{nome}}<br>CPF: {{cpf}}</div>
+<div class="c"><b>Data</b>{{cidade}}, ____/____/20____</div></div>`},
+
+comercial:{nome:'Licença de uso comercial', desc:'quando a imagem divulga um negócio', tpl:`
+<h1>Licença de Uso Comercial de Imagem</h1>
+<p class="sub">Instrumento complementar ao contrato · {{hoje}}</p>
+<div class="dupla">
+<div class="bloco"><div class="lin"><span class="r">Licenciada</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF/CNPJ</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">Endereço</span><span class="v">{{endereco}}</span></div></div>
+<div class="bloco"><div class="lin"><span class="r">Licenciante</span><span class="v">{{empresa}}</span></div>
+<div class="lin"><span class="r">CNPJ</span><span class="v">{{cnpj}}</span></div>
+<div class="lin"><span class="r">Trabalho</span><span class="v">{{nicho}} · {{data}}</span></div></div></div>
+<h2>Objeto</h2>
+<p>Concessão de licença de uso comercial das fotografias produzidas no trabalho identificado acima, mantida a autoria com o licenciante, nos termos da Lei nº 9.610/1998.</p>
+<h2>Escopo da licença</h2>
+<div class="bloco">
+<div class="lin"><span class="r">Imagens licenciadas</span><span class="v"></span></div>
+<div class="lin"><span class="r">Finalidade</span><span class="v"></span></div>
+<div class="lin"><span class="r">Meios autorizados</span><span class="v"></span></div>
+<div class="lin"><span class="r">Território</span><span class="v"></span></div>
+<div class="lin"><span class="r">Prazo</span><span class="v"></span></div>
+<div class="lin"><span class="r">Exclusividade</span><span class="v">( ) não exclusiva ( ) exclusiva</span></div>
+<div class="lin"><span class="r">Valor</span><span class="v">R$</span></div></div>
+<h2>Condições</h2>
+<ul><li>A licença abrange exclusivamente a finalidade, os meios, o território e o prazo indicados acima.</li>
+<li>É vedada a sublicença, a revenda ou a cessão a terceiros.</li>
+<li>É vedada a alteração da obra, inclusive por filtros, recortes que a descaracterizem ou edição por inteligência artificial.</li>
+<li>Findo o prazo, cessa o direito de uso, devendo a licenciada retirar as imagens dos meios sob seu controle.</li>
+<li>O crédito ao autor, quando o meio permitir, é desejado.</li></ul>
+<div class="assina" style="margin-top:20px">
+<div class="c"><b>LICENCIADA</b>{{nome}}<br>CPF/CNPJ: {{cpf}}</div>
+<div class="c"><b>LICENCIANTE</b>{{empresa}}<br>CNPJ: {{cnpj}}</div></div>`},
+
+recibo:{nome:'Recibo', desc:'comprovante de pagamento', tpl:`
+<h1>Recibo</h1>
+<p class="sub">nº {{numero}} · {{hoje}}</p>
+<p style="font-size:11.5pt;line-height:1.85;margin-top:12px">
+Recebi de <b>{{nome}}</b>, inscrito no CPF/CNPJ {{cpf}}, a importância de
+<b>R$ ______________</b> (____________________________________________________________),
+referente a {{categoria}}{{#nicho}} de {{nicho}}{{/nicho}}{{#data}}, com data de {{data}}{{/data}}.</p>
+<div class="bloco" style="margin-top:14px">
+<div class="lin"><span class="r">Referente a</span><span class="v">( ) reserva ( ) parcela ( ) saldo ( ) produtos ( ) outros</span></div>
+<div class="lin"><span class="r">Forma</span><span class="v">( ) PIX ( ) dinheiro ( ) débito ( ) crédito ( ) transferência</span></div>
+<div class="lin"><span class="r">Valor total do contrato</span><span class="v">R$ {{total}}</span></div>
+<div class="lin"><span class="r">Saldo remanescente</span><span class="v">R$ ______________</span></div></div>
+<p style="margin-top:18px">Para clareza, firmo o presente recibo.</p>
+<p>{{cidade}}, {{hoje}}.</p>
+<div class="assina" style="margin-top:26px">
+<div class="c"><b>{{empresa}}</b>CNPJ {{cnpj}}<br>{{favorecido}}</div>
+<div class="c"><b>CLIENTE</b>{{nome}}</div></div>`},
+
+distrato:{nome:'Termo de cancelamento', desc:'formaliza o encerramento', tpl:`
+<h1>Termo de Cancelamento</h1>
+<p class="sub">{{hoje}}</p>
+<div class="bloco">
+<div class="lin"><span class="r">Cliente</span><span class="v">{{nome}}</span></div>
+<div class="lin"><span class="r">CPF</span><span class="v">{{cpf}}</span></div>
+<div class="lin"><span class="r">Trabalho</span><span class="v">{{nicho}}</span></div>
+<div class="lin"><span class="r">Data contratada</span><span class="v">{{data}}</span></div>
+<div class="lin"><span class="r">Valor pago</span><span class="v">R$ {{sinal}}</span></div>
+<div class="lin"><span class="r">Data do aviso</span><span class="v">____/____/20____</span></div></div>
+<h2>Tratamento aplicado</h2>
+<div class="opt"><span class="bx"></span><span>Conversão <b>integral</b> em crédito, válido por 12 meses</span></div>
+<div class="opt"><span class="bx"></span><span>Conversão de <b>50%</b> em crédito, válido por 12 meses</span></div>
+<div class="opt"><span class="bx"></span><span><b>Retenção</b> do valor de reserva</span></div>
+<div class="opt"><span class="bx"></span><span>Devolução integral — arrependimento em 7 dias (art. 49, CDC)</span></div>
+<div class="opt"><span class="bx"></span><span>Devolução integral — impossibilidade por parte da contratada</span></div>
+<div class="bloco" style="margin-top:10px">
+<div class="lin"><span class="r">Valor do crédito</span><span class="v">R$</span></div>
+<div class="lin"><span class="r">Validade</span><span class="v">____/____/20____</span></div>
+<div class="lin"><span class="r">Custos já assumidos</span><span class="v">R$</span></div></div>
+<div class="nota">Custos já assumidos em nome do cliente, especialmente produtos encomendados ao laboratório, não integram o crédito e permanecem devidos. O crédito é nominal, intransferível, e seu uso depende da disponibilidade da agenda.</div>
+<p style="margin-top:12px">As partes dão por encerrado o contrato quanto ao trabalho identificado, nada mais tendo a reclamar uma da outra além do aqui consignado.</p>
+<div class="assina" style="margin-top:20px">
+<div class="c"><b>CLIENTE</b>{{nome}}</div>
+<div class="c"><b>{{empresa}}</b>CNPJ {{cnpj}}</div></div>`}
+};
+
+/* ══════════════ IMPRESSÃO ══════════════ */
+const CSSDOC = `<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Poppins:wght@200;300;400;500&display=swap');
+:root{--ink:#161513;--soft:#4E4B44;--gold:#8a6d3f;--gilt:#C7A96B;--line:#E2DED4;--mute:#8A867D;--wash:#F4F1E9}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:'Poppins',sans-serif;font-weight:300;font-size:10.6pt;line-height:1.55}
+.pg{max-width:760px;margin:0 auto;padding:30px 26px 44px}
+.topo{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+.mk{font-family:'Cormorant Garamond',serif;font-size:19pt;letter-spacing:.04em;line-height:1}
+.mk small{display:block;font-family:'Poppins',sans-serif;font-size:6pt;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-top:2px}
+.topo .id{text-align:right;font-size:8.5pt;color:var(--mute)}
+h1{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:20pt;margin:0 0 4px}
+.sub{color:var(--mute);font-size:9pt;margin:0 0 18px}
+h2{font-size:7pt;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin:20px 0 8px}
+h3{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:12pt;margin:14px 0 4px}
+p{margin:0 0 9px}
+ul{margin:0 0 9px;padding-left:17px}li{margin-bottom:4px}
+.bloco{border:1px solid var(--line);border-radius:9px;padding:12px 13px}
+.lin{display:grid;grid-template-columns:118px 1fr;gap:9px;padding:6px 0;border-bottom:1px solid var(--line)}
+.lin:last-child{border-bottom:0}
+.lin .r{font-size:8pt;color:var(--mute)}
+.lin .v{border-bottom:1px dotted #CFC7B6;min-height:15px}
+.dupla{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+table{width:100%;border-collapse:collapse;font-size:9.5pt;margin:9px 0}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:6.8pt;letter-spacing:.13em;text-transform:uppercase;color:var(--gold);font-weight:400;background:var(--wash)}
+.par{display:block;font-size:9.4pt;color:var(--soft);margin:0 0 8px;padding-left:11px;border-left:2px solid var(--line)}
+.par b{color:var(--ink);font-weight:500}
+.nota{background:var(--wash);border-radius:9px;padding:11px 12px;margin:10px 0;font-size:9.4pt;color:var(--soft)}
+.destaque{border:1px solid var(--gilt);background:#FDFBF6;border-radius:9px;padding:11px 12px;margin:10px 0;font-size:9.6pt}
+.opt{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid var(--line)}
+.opt .bx{width:14px;height:14px;flex:0 0 14px;border:1px solid #9E978A;border-radius:3px;margin-top:2px}
+.assina{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:26px}
+.assina .c{border-top:1px solid var(--ink);padding-top:6px;font-size:8.5pt;color:var(--soft)}
+.assina .c b{display:block;color:var(--ink);font-size:9.4pt;font-weight:500}
+.total{display:flex;justify-content:space-between;border-top:2px solid var(--ink);padding-top:10px;font-size:11pt}
+.total b{font-family:'Cormorant Garamond',serif;font-size:15pt;font-weight:500}
+.rod{margin-top:24px;padding-top:11px;border-top:1px solid var(--line);font-size:7.6pt;color:var(--mute);text-align:center}
+@media print{.pg{padding:0}.bloco,table,.assina{break-inside:avoid}}
+</style>`;
+
+function dados(cli, tra, numero){
+  const c = DB.config, r = c.regras, t = tra||{};
+  const ev = t.categoria === 'evento';
+  const tot = num(t.total), sin = num(t.sinal);
+  return {
+    nome:cli.nome||'', cpf:cli.cpf||'', rg:cli.rg||'', nasc:cli.nasc||'', tel:cli.tel||'',
+    email:cli.email||'', endereco:cli.end||'', conheceu:cli.conheceu||'',
+    categoria: ev?'Cobertura de evento':'Ensaio fotográfico', nicho:t.nicho||'',
+    plano:t.plano||'', qtd:t.qtd||'', data:dbr(t.data)||'____/____/______', hora:t.hora||'',
+    local:t.local||'',
+    servicos:(()=>{ const l=(t.itens||[]).filter(x=>x.cat==='ensaio'||x.cat==='evento')
+        .map(x=>x.nome+(x.qtd>1?' ('+x.qtd+')':'')); return l.length?l.join(' · '):(t.nicho||'—'); })(),
+    produtos:(()=>{ const l=(t.itens||[]).filter(x=>x.cat==='produto'||x.cat==='revelacao')
+        .map(x=>x.nome+(x.qtd>1?' ('+x.qtd+')':'')); return l.length?l.join(' · '):'—'; })(),
+    itens:(()=>{ const l=(t.itens||[]); return l.length? l.map(x=>x.nome+(x.qtd>1?' ×'+x.qtd:'')).join(' · '):'—'; })(),
+    total:tot?brl(tot):'______________', sinal:sin?brl(sin):'______________',
+    saldo:(tot&&sin)?brl(tot-sin):'______________',
+    pct: ev?`${r.sinalEvento}% (cinquenta por cento)`:`${r.sinalEnsaio}% (trinta por cento)`,
+    avisoRem: ev?r.remEvento:r.remEnsaio, hoje:hoje(), numero:numero||'________',
+    empresa:c.empresa.nome, cnpj:c.empresa.cnpj, endEmpresa:c.empresa.end,
+    telEmpresa:c.empresa.tel, emailEmpresa:c.empresa.email, banco:c.empresa.banco,
+    favorecido:c.empresa.fav, cidade:c.empresa.cidade,
+    prazoBase:r.prazoBase, prazoMedio:r.prazoMedio, limiteBase:r.limiteBase, limiteMedio:r.limiteMedio,
+    taxaDomingo:r.taxaDomingo, taxaCustodia:r.taxaCustodia, taxaReenvio:r.taxaReenvio,
+    taxaDiagramacao:r.taxaDiagramacao, taxaExterno:r.taxaExterno, diasBackup:r.diasBackup,
+    diasRetirada:r.diasRetirada, prazoProdutos:r.prazoProdutos, diasPagarExtras:r.diasPagarExtras,
+    _ev:ev
+  };
+}
+
+function render(tpl, d){
+  let s = tpl;
+  s = s.replace(/\{\{#ensaio\}\}([\s\S]*?)\{\{\/ensaio\}\}/g, d._ev?'':'$1');
+  s = s.replace(/\{\{#evento\}\}([\s\S]*?)\{\{\/evento\}\}/g, d._ev?'$1':'');
+  s = s.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (m,k,c)=> (d[k]&&d[k]!=='—'&&!String(d[k]).startsWith('___')) ? c : '');
+  s = s.replace(/\{\{(\w+)\}\}/g, (m,k)=> d[k]!==undefined ? esc(d[k]) : '');
+  return s;
+}
+
+let PREV = {tipo:null, cli:null, tra:null, numero:null, editando:false, registrado:false};
+
+function imprimir(tipo, cli, tra){
+  const m = DB.modelos[tipo] || MOD[tipo];
+  const numero = String(DB.seq).padStart(4,'0');
+  const d = dados(cli, tra, numero);
+  const corpo = render(m.tpl || MOD[tipo].tpl, d);
+  const c = DB.config.empresa;
+
+  PREV = {tipo, cli, tra, numero, d, editando:false, registrado:false};
+  $('#prevTit').textContent = MOD[tipo].nome + ' · ' + (cli.nome||'');
+  $('#prevPapel').innerHTML =
+    `<div class="topo"><div class="mk">Lumiar<small>Retratos</small></div><div class="id">nº ${numero} · ${hoje()}</div></div>`
+    + corpo
+    + `<div class="rod">${esc(c.nome)} · CNPJ ${esc(c.cnpj)} · ${esc(c.end)} · ${esc(c.tel)}</div>`;
+  $('#prevPapel').contentEditable = 'false';
+  $('#prev').classList.remove('editando');
+  $('#prevEditar').textContent = 'Editar';
+  $('#prev').classList.add('on');
+  $('#prev .area').scrollTop = 0;
+  injetaEstiloPapel();
+}
+
+function injetaEstiloPapel(){
+  if(document.getElementById('estiloPapel')) return;
+  const st = document.createElement('style'); st.id='estiloPapel';
+  st.textContent = CSSDOC.replace(/<\/?style>/g,'').replace(/@import[^;]+;/,'')
+    .replace(/(^|\})\s*([^@}{]+)\{/g, (m,a,b)=> a + b.split(',').map(x=>'#prevPapel '+x.trim()).join(',') + '{')
+    .replace(/#prevPapel body/g,'#prevPapel').replace(/#prevPapel \.pg/g,'#prevPapel')
+    .replace(/#prevPapel :root/g,':root');
+  document.head.appendChild(st);
+}
+
+function registraEmissao(){
+  if(PREV.registrado) return;
+  DB.docs.unshift({id:uid(), numero:PREV.numero, tipo:PREV.tipo, clienteId:PREV.cli.id,
+    trabalhoId:PREV.tra?PREV.tra.id:null, nomeCliente:PREV.cli.nome,
+    quando:new Date().toISOString(), dados:PREV.d, html:$('#prevPapel').innerHTML});
+  DB.seq++; store.salvar(); atualizaBadges();
+  PREV.registrado = true;
+}
+
+$('#prevVoltar').onclick = ()=>{ $('#prev').classList.remove('on'); desenha(); };
+$('#prevEditar').onclick = ()=>{
+  PREV.editando = !PREV.editando;
+  $('#prevPapel').contentEditable = PREV.editando ? 'true' : 'false';
+  $('#prev').classList.toggle('editando', PREV.editando);
+  $('#prevEditar').textContent = PREV.editando ? 'Concluir edição' : 'Editar';
+  if(PREV.editando){ $('#prevPapel').focus(); toast('Clique no texto para corrigir'); }
+};
+$('#prevImprimir').onclick = ()=>{
+  const w = window.open('','_blank');
+  if(!w){ toast('Libere os pop-ups para imprimir','erro'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(MOD[PREV.tipo].nome)} · ${esc(PREV.cli.nome||'')}</title>${CSSDOC}</head><body><div class="pg">${$('#prevPapel').innerHTML}</div></body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(), 700);
+  registraEmissao();
+  toast('Documento registrado no histórico','ok');
+};
+
+/* ══════════════ TEMA ══════════════ */
+const SOL = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const LUA = '<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+function aplicaTema(t){
+  document.documentElement.setAttribute('data-tema', t);
+  $('#btnTema').innerHTML = (t==='claro'?LUA:SOL) + '<span>'+(t==='claro'?'Escuro':'Claro')+'</span>';
+  try{ localStorage.setItem('lumiar-tema', t); }catch(e){}
+}
+$('#btnTema').onclick = ()=> aplicaTema(document.documentElement.getAttribute('data-tema')==='claro'?'escuro':'claro');
+
+/* ══════════════ NAVEGAÇÃO ══════════════ */
+let V = 'painel', busca = '', selCliente = null;
+const TITULOS = {painel:'Painel', clientes:'Clientes', trabalhos:'Trabalhos', catalogo:'Serviços e produtos',
+  emitir:'Emitir documento', historico:'Documentos emitidos', modelos:'Modelos de documento', ajustes:'Ajustes'};
+
+function ir(v){ V=v; busca=''; $('#busca').value=''; desenha(); if(innerWidth<=900) menu(false); }
+document.querySelectorAll('.nav').forEach(b=> b.onclick = ()=>ir(b.dataset.v));
+$('#busca').oninput = e => { busca = e.target.value.toLowerCase().trim(); desenha(); };
+const menu = v => { $('#rail').classList.toggle('on',v); $('#veu').classList.toggle('on',v); };
+$('#abrirMenu').onclick = ()=>menu(true);
+$('#veu').onclick = ()=>menu(false);
+
+function atualizaBadges(){
+  $('#bg-cli').textContent = DB.clientes.length;
+  $('#bg-tra').textContent = DB.trabalhos.length;
+  $('#bg-doc').textContent = DB.docs.length;
+  const bc = $('#bg-cat'); if(bc) bc.textContent = (DB.config.catalogo||[]).length;
+}
+
+/* ══════════════ MODAL ══════════════ */
+function modal(titulo, corpo, botoes){
+  $('#mTit').textContent = titulo;
+  $('#mCorpo').innerHTML = corpo;
+  $('#mPe').innerHTML = '';
+  (botoes||[]).forEach(b=>{
+    const x = el('button','btn'+(b.pri?' pri':'')+(b.perigo?' perigo':''), b.txt);
+    x.onclick = ()=>b.acao(); $('#mPe').appendChild(x);
+  });
+  $('#modal').classList.add('on');
+}
+const fecharModal = ()=> $('#modal').classList.remove('on');
+$('#mFechar').onclick = fecharModal;
+$('#modal').onclick = e => { if(e.target.id==='modal') fecharModal(); };
+addEventListener('keydown', e=>{ if(e.key==='Escape'){ fecharModal(); menu(false); } });
+
+function confirmar(txt, acao){
+  modal('Confirmar', `<p style="margin:0">${txt}</p>`, [
+    {txt:'Cancelar', acao:fecharModal},
+    {txt:'Confirmar', pri:true, acao:()=>{ fecharModal(); acao(); }}
+  ]);
+}
+
+/* ══════════════ VISTAS ══════════════ */
+function desenha(){
+  $('#titulo').textContent = TITULOS[V];
+  $('#cxBusca').style.display = ['clientes','trabalhos','historico','catalogo'].includes(V) ? '' : 'none';
+  $('#acoesTopo').innerHTML = '';
+  document.querySelectorAll('.nav').forEach(b=>b.setAttribute('aria-current', b.dataset.v===V));
+  atualizaBadges();
+  ({painel:vPainel, clientes:vClientes, trabalhos:vTrabalhos, catalogo:vCatalogo, emitir:vEmitir, historico:vHistorico,
+    modelos:vModelos, ajustes:vAjustes}[V])();
+}
+
+function acaoTopo(txt, ico, fn, pri){
+  const b = el('button','btn'+(pri?' pri':''), (ico||'')+`<span>${txt}</span>`);
+  b.onclick = fn; $('#acoesTopo').appendChild(b);
+}
+const IC = {
+  mais:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  up:'<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>',
+  doc:'<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'
+};
+
+/* ---------- painel ---------- */
+const CORES = ['#C7A96B','#8FA6C4','#A98FC4','#7FA87F','#C98A5B','#C47F9B','#6FA9A0','#B9A46A','#9B8FC4'];
+
+function donut(dados, total){
+  if(!total) return '<div class="meta">Sem dados ainda.</div>';
+  const R=54, C=2*Math.PI*R; let off=0;
+  const arcos = dados.map((d,i)=>{
+    const frac = d.v/total, dash = frac*C;
+    const g = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${CORES[i%CORES.length]}" stroke-width="20"
+      stroke-dasharray="${dash} ${C-dash}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"
+      style="transition:stroke-dasharray .6s ease"/>`;
+    off += dash; return g;
+  }).join('');
+  return `<div class="donut">
+    <svg width="140" height="140" viewBox="0 0 140 140" style="flex:0 0 140px">
+      <circle cx="70" cy="70" r="54" fill="none" stroke="var(--bg2)" stroke-width="20"/>
+      ${arcos}
+      <text x="70" y="66" text-anchor="middle" fill="var(--txt)" font-family="Cormorant Garamond,serif" font-size="30">${total}</text>
+      <text x="70" y="84" text-anchor="middle" fill="var(--txt3)" font-size="8" letter-spacing="1.6">TOTAL</text>
+    </svg>
+    <div class="leg">${dados.map((d,i)=>`<div class="i">
+      <span class="pt" style="background:${CORES[i%CORES.length]}"></span>
+      <span>${esc(d.n)}</span><span class="v">${d.v}</span></div>`).join('')}</div></div>`;
+}
+
+function barras(dados, total){
+  if(!dados.length) return '<div class="meta">Sem dados ainda.</div>';
+  const max = Math.max(...dados.map(d=>d.v), 1);
+  return dados.map((d,i)=>`<div class="barra">
+    <div class="lb"><span>${esc(d.n)}</span><span>${d.v}</span></div>
+    <div class="tr"><i style="width:${d.v/max*100}%;background:${CORES[i%CORES.length]}"></i></div></div>`).join('');
+}
+
+function vPainel(){
+  const cli=DB.clientes.length, tra=DB.trabalhos.length, doc=DB.docs.length;
+  const cat=(DB.config.catalogo||[]).length;
+  const semPreco=(DB.config.catalogo||[]).filter(x=>!x.valor).length;
+
+  const porTipo = Object.entries(MOD).map(([k,m])=>({n:m.nome, v:DB.docs.filter(d=>d.tipo===k).length}))
+    .filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  const porSit = ['Orçamento','Contratado','Fotografado','Em edição','Entregue']
+    .map(sc=>({n:sc, v:DB.trabalhos.filter(t=>(t.status||'Orçamento')===sc).length})).filter(x=>x.v>0);
+  const porCat = Object.entries(DB.config.categorias).map(([k,n])=>({n, v:DB.trabalhos.reduce((a,t)=>
+    a + (t.itens||[]).filter(i=>i.cat===k).length, 0)})).filter(x=>x.v>0);
+
+  const proximos = DB.trabalhos.filter(t=>t.data && t.data >= new Date().toISOString().slice(0,10))
+    .sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
+
+  $('#vista').innerHTML = `
+  <div class="kpis">
+    <button class="kpi" data-ir="clientes"><div class="ic"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg></div>
+      <div class="n">${cli}</div><div class="r">Clientes</div></button>
+    <button class="kpi" data-ir="trabalhos"><div class="ic"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+      <div class="n">${tra}</div><div class="r">Trabalhos</div></button>
+    <button class="kpi" data-ir="historico"><div class="ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+      <div class="n">${doc}</div><div class="r">Documentos</div></button>
+    <button class="kpi" data-ir="catalogo"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20.6 8.4 12 3 3.4 8.4v7.2L12 21l8.6-5.4z"/><path d="m3.4 8.4 8.6 5.4 8.6-5.4"/></svg></div>
+      <div class="n">${cat}</div><div class="r">Itens no catálogo</div></button>
+  </div>
+
+  ${semPreco ? `<div class="card" style="border-color:var(--gold)"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px"><div style="font-size:14px">${semPreco} ${semPreco===1?'item ainda sem valor':'itens ainda sem valor'} no catálogo</div>
+    <div class="meta">Cadastre os preços para que os trabalhos sejam somados automaticamente.</div></div>
+    <button class="btn pri" data-ir="catalogo">Cadastrar valores</button></div></div>` : ''}
+
+  <div class="pgrid">
+    <div class="card"><h2>Documentos por tipo</h2>${donut(porTipo, doc)}</div>
+    <div class="card"><h2>Trabalhos por situação</h2>${barras(porSit, tra)}
+      ${porCat.length?`<h2 style="margin-top:22px">Itens contratados por categoria</h2>${barras(porCat)}`:''}</div>
+  </div>
+
+  <div class="card"><h2>Próximas datas</h2>
+    ${proximos.length ? proximos.map(t=>{
+      const c = DB.clientes.find(x=>x.id===t.clienteId)||{};
+      const dias = Math.ceil((new Date(t.data)-new Date())/86400000);
+      return `<div class="hist"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></div>
+        <div><div class="t">${esc(c.nome||'—')}</div><div class="m">${esc(t.nicho||t.plano||'Trabalho')} · ${dbr(t.data)}</div></div>
+        <div class="btns"><span class="tag${dias<=7?' g':''}">${dias<=0?'hoje':'em '+dias+' dia'+(dias===1?'':'s')}</span></div></div>`;
+    }).join('') : '<div class="meta">Nenhuma data futura cadastrada.</div>'}
+  </div>
+
+  <div class="card"><h2>Atalhos</h2><div class="atalhos">
+    <button class="atalho" data-acao="novoCliente"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+      <div><div class="t">Novo cliente</div><div class="d">cadastrar manualmente</div></div></button>
+    <button class="atalho" data-acao="importar"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg></div>
+      <div><div class="t">Importar planilha</div><div class="d">do Microsoft Forms</div></div></button>
+    <button class="atalho" data-acao="novoTrabalho"><div class="ic"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/></svg></div>
+      <div><div class="t">Novo trabalho</div><div class="d">com serviços e produtos</div></div></button>
+    <button class="atalho" data-ir="emitir"><div class="ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+      <div><div class="t">Emitir documento</div><div class="d">contrato, ordem, recibo…</div></div></button>
+    <button class="atalho" data-ir="modelos"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>
+      <div><div class="t">Editar modelos</div><div class="d">textos dos documentos</div></div></button>
+    <button class="atalho" data-ir="ajustes"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9 2 2 0 1 1-2.8 2.8 1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2 2 2 0 1 1-2.8-2.8A1.7 1.7 0 0 0 3.1 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9 2 2 0 1 1 2.8-2.8A1.7 1.7 0 0 0 10 4.1a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2 2 2 0 1 1 2.8 2.8A1.7 1.7 0 0 0 20.9 11a2 2 0 1 1 0 4z"/></svg></div>
+      <div><div class="t">Ajustes</div><div class="d">dados, prazos e taxas</div></div></button>
+  </div></div>`;
+
+  document.querySelectorAll('[data-ir]').forEach(b=> b.onclick = ()=> ir(b.dataset.ir));
+  document.querySelectorAll('[data-acao]').forEach(b=> b.onclick = ()=>{
+    const a=b.dataset.acao;
+    if(a==='novoCliente') formCliente();
+    if(a==='importar') $('#arqPlan').click();
+    if(a==='novoTrabalho'){ if(!DB.clientes.length) return toast('Cadastre um cliente primeiro','erro'); formTrabalho(); }
+  });
+}
+
+/* ---------- clientes ---------- */
+function vClientes(){
+  acaoTopo('Importar planilha', IC.up, ()=>$('#arqPlan').click());
+  acaoTopo('Novo cliente', IC.mais, ()=>formCliente(), true);
+
+  const lista = DB.clientes.filter(c=>!busca || (c.nome+c.cpf+c.tel).toLowerCase().includes(busca))
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  if(!DB.clientes.length){
+    $('#vista').innerHTML = `<div class="card"><div class="vazio">
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M16 19v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+      <div class="t">Nenhum cliente ainda</div>
+      <div class="d">Importe a planilha do Forms ou cadastre manualmente.</div></div>
+      <label class="drop" id="drop" style="margin-top:6px"><div class="t">Arraste a planilha aqui</div><div class="d">.xlsx ou .csv exportado do Microsoft Forms</div></label></div>`;
+    ligaDrop(); return;
+  }
+  const tb = lista.map(c=>{
+    const nt = DB.trabalhos.filter(t=>t.clienteId===c.id).length;
+    const nd = DB.docs.filter(d=>d.clienteId===c.id).length;
+    return `<tr data-id="${c.id}">
+      <td style="width:46px"><span class="av">${ini(c.nome)}</span></td>
+      <td><div class="nome">${esc(c.nome)}</div><div class="meta">${esc(c.cpf||'sem CPF')}</div></td>
+      <td class="meta">${esc(c.tel||'—')}</td>
+      <td><span class="tag${nt?' g':''}">${nt} trabalho${nt===1?'':'s'}</span></td>
+      <td><span class="tag${nd?' ok':''}">${nd} doc${nd===1?'':'s'}</span></td>
+    </tr>`;}).join('');
+  $('#vista').innerHTML = `<div class="card"><table class="tabela">
+    <thead><tr><th></th><th>Cliente</th><th>Telefone</th><th>Trabalhos</th><th>Documentos</th></tr></thead>
+    <tbody>${tb}</tbody></table>
+    ${lista.length?'':'<div class="vazio"><div class="t">Nenhum resultado</div></div>'}</div>`;
+  document.querySelectorAll('.tabela tbody tr').forEach(tr=>{
+    tr.onclick = ()=> abrirCliente(tr.dataset.id);
+  });
+}
+
+function ligaDrop(){
+  const d = $('#drop'); if(!d) return;
+  d.onclick = ()=>$('#arqPlan').click();
+  ['dragenter','dragover'].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.add('over');}));
+  ['dragleave','drop'].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.remove('over');}));
+  d.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if(f) importar(f); });
+}
+
+function formCliente(c){
+  const e = c||{};
+  modal(c?'Editar cliente':'Novo cliente', `<div class="campos">
+    <div class="full"><label>Nome completo</label><input id="c_nome" value="${esc(e.nome||'')}"></div>
+    <div><label>CPF ou CNPJ</label><input id="c_cpf" value="${esc(e.cpf||'')}"></div>
+    <div><label>RG</label><input id="c_rg" value="${esc(e.rg||'')}"></div>
+    <div><label>Telefone</label><input id="c_tel" value="${esc(e.tel||'')}"></div>
+    <div><label>Nascimento</label><input id="c_nasc" value="${esc(e.nasc||'')}" placeholder="dd/mm/aaaa"></div>
+    <div class="full"><label>E-mail</label><input id="c_email" value="${esc(e.email||'')}"></div>
+    <div class="full"><label>Endereço</label><input id="c_end" value="${esc(e.end||'')}"></div>
+    <div class="full"><label>Como conheceu</label><input id="c_conheceu" value="${esc(e.conheceu||'')}"></div>
+  </div>`, [
+    {txt:'Cancelar', acao:fecharModal},
+    {txt:'Salvar', pri:true, acao:()=>{
+      const v = id => $('#c_'+id).value.trim();
+      if(!v('nome')) return toast('O nome é obrigatório','erro');
+      const dados = {nome:v('nome'),cpf:v('cpf'),rg:v('rg'),tel:v('tel'),nasc:v('nasc'),
+        email:v('email'),end:v('end'),conheceu:v('conheceu')};
+      if(c) Object.assign(c,dados); else DB.clientes.push(Object.assign({id:uid()},dados));
+      store.salvar(); fecharModal(); desenha(); toast('Cliente salvo','ok');
+    }}
+  ]);
+}
+
+function abrirCliente(id){
+  const c = DB.clientes.find(x=>x.id===id); if(!c) return;
+  selCliente = c;
+  const tra = DB.trabalhos.filter(t=>t.clienteId===id);
+  const dcs = DB.docs.filter(d=>d.clienteId===id).slice(0,8);
+  modal(c.nome, `
+    <div class="card" style="padding:0;border:0">
+      <div class="campos" style="margin-bottom:16px">
+        <div><label>CPF</label><div>${esc(c.cpf||'—')}</div></div>
+        <div><label>RG</label><div>${esc(c.rg||'—')}</div></div>
+        <div><label>Telefone</label><div>${esc(c.tel||'—')}</div></div>
+        <div><label>Nascimento</label><div>${esc(c.nasc||'—')}</div></div>
+        <div class="full"><label>E-mail</label><div>${esc(c.email||'—')}</div></div>
+        <div class="full"><label>Endereço</label><div>${esc(c.end||'—')}</div></div>
+      </div>
+      <h2 style="font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin:18px 0 10px">Trabalhos</h2>
+      ${tra.length? tra.map(t=>`<div class="hist"><div class="ic">${IC.doc}</div>
+        <div><div class="t">${esc(t.nicho||t.plano||'Trabalho')}</div>
+        <div class="m">${t.categoria==='evento'?'Evento':'Ensaio'} · ${dbr(t.data)||'sem data'}</div></div>
+        <div class="btns"><button class="btn sm" data-tra="${t.id}">Emitir</button></div></div>`).join('')
+        : '<div class="meta">Nenhum trabalho cadastrado.</div>'}
+      <h2 style="font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin:20px 0 10px">Últimos documentos</h2>
+      ${dcs.length? dcs.map(d=>`<div class="hist"><div class="ic">${IC.doc}</div>
+        <div><div class="t">${MOD[d.tipo]?MOD[d.tipo].nome:d.tipo} · nº ${d.numero}</div>
+        <div class="m">${new Date(d.quando).toLocaleString('pt-BR')}</div></div></div>`).join('')
+        : '<div class="meta">Nenhum documento emitido.</div>'}
+    </div>`, [
+    {txt:'Excluir', perigo:true, acao:()=>{ fecharModal(); confirmar(`Excluir <b>${esc(c.nome)}</b> e seus trabalhos? Os documentos já emitidos permanecem no histórico.`, ()=>{
+      DB.clientes = DB.clientes.filter(x=>x.id!==id);
+      DB.trabalhos = DB.trabalhos.filter(t=>t.clienteId!==id);
+      store.salvar(); desenha(); toast('Cliente excluído'); }); }},
+    {txt:'Editar', acao:()=>{ fecharModal(); formCliente(c); }},
+    {txt:'Novo trabalho', acao:()=>{ fecharModal(); formTrabalho(null, c.id); }},
+    {txt:'Emitir documento', pri:true, acao:()=>{ fecharModal(); ir('emitir'); }}
+  ]);
+  document.querySelectorAll('[data-tra]').forEach(b=> b.onclick = ()=>{
+    fecharModal(); selTrabalho = b.dataset.tra; ir('emitir');
+  });
+}
+
+/* ---------- trabalhos ---------- */
+let selTrabalho = null;
+
+function vTrabalhos(){
+  acaoTopo('Novo trabalho', IC.mais, ()=>formTrabalho(), true);
+  const lista = DB.trabalhos.map(t=>({t, c:DB.clientes.find(x=>x.id===t.clienteId)}))
+    .filter(o=>o.c && (!busca || (o.c.nome+(o.t.nicho||'')+(o.t.plano||'')).toLowerCase().includes(busca)))
+    .sort((a,b)=>(b.t.data||'').localeCompare(a.t.data||''));
+  if(!DB.trabalhos.length){
+    $('#vista').innerHTML = `<div class="card"><div class="vazio">
+      <div class="ic"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+      <div class="t">Nenhum trabalho cadastrado</div>
+      <div class="d">Cadastre o trabalho para emitir contrato e demais documentos com os dados já preenchidos.</div></div></div>`;
+    return;
+  }
+  $('#vista').innerHTML = `<div class="card"><table class="tabela">
+    <thead><tr><th>Cliente</th><th>Trabalho</th><th>Data</th><th>Valor</th><th>Situação</th></tr></thead>
+    <tbody>${lista.map(({t,c})=>`<tr data-id="${t.id}">
+      <td><div class="nome">${esc(c.nome)}</div></td>
+      <td><div class="nome">${esc(t.nicho||t.plano||'—')}</div><div class="meta">${t.categoria==='evento'?'Evento':'Ensaio'}${t.plano?' · '+esc(t.plano):''}</div></td>
+      <td class="meta">${dbr(t.data)||'—'}</td>
+      <td class="meta">${t.total?'R$ '+brl(num(t.total)):'—'}</td>
+      <td><span class="tag${t.status==='Entregue'?' ok':t.status==='Contratado'?' g':''}">${esc(t.status||'Orçamento')}</span></td>
+    </tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('.tabela tbody tr').forEach(tr=>{
+    tr.onclick = ()=>{ const t = DB.trabalhos.find(x=>x.id===tr.dataset.id); formTrabalho(t); };
+  });
+}
+
+function chipsHTML(id, opcoes, marcados){
+  return `<div class="chips" id="${id}">${opcoes.map(o=>
+    `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${(marcados||[]).includes(o)}">${esc(o)}</button>`).join('')}</div>`;
+}
+function ligaChips(id){
+  document.querySelectorAll('#'+id+' .chip').forEach(b=> b.onclick = ()=>
+    b.setAttribute('aria-pressed', b.getAttribute('aria-pressed')!=='true'));
+}
+function lerChips(id){
+  return [...document.querySelectorAll('#'+id+' .chip')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.dataset.v);
+}
+
+function formTrabalho(t, clienteId){
+  const e = t||{}, cfg = DB.config;
+  const cid = e.clienteId || clienteId || (DB.clientes[0]&&DB.clientes[0].id);
+  if(!DB.clientes.length) return toast('Cadastre um cliente primeiro','erro');
+  const itens = JSON.parse(JSON.stringify(e.itens||[]));
+
+  const linhaItem = it => `<div class="hist" data-item="${it.id}">
+      <div class="ic">${IC.doc}</div>
+      <div style="flex:1"><div class="t">${esc(it.nome)}</div><div class="m">${cfg.categorias[it.cat]||it.cat}</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" min="1" value="${it.qtd||1}" data-q="${it.id}" style="width:64px;padding:7px 8px" aria-label="Quantidade">
+        <input type="number" step="0.01" value="${it.valor||''}" data-vl="${it.id}" style="width:104px;padding:7px 8px" placeholder="0,00" aria-label="Valor">
+        <button class="btn sm perigo" data-rm="${it.id}">×</button>
+      </div></div>`;
+
+  modal(t?'Editar trabalho':'Novo trabalho', `<div class="campos">
+    <div class="full"><label>Cliente</label><select id="t_cli">${DB.clientes.map(c=>
+      `<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
+    <div><label>Categoria principal</label><select id="t_cat">
+      <option value="ensaio" ${e.categoria!=='evento'?'selected':''}>Ensaio</option>
+      <option value="evento" ${e.categoria==='evento'?'selected':''}>Evento</option></select></div>
+    <div><label>Identificação</label><input id="t_nicho" value="${esc(e.nicho||'')}" placeholder="Gestante, Casamento…"></div>
+    <div><label>Plano</label><input id="t_plano" value="${esc(e.plano||'')}"></div>
+    <div><label>Imagens do plano</label><input type="number" id="t_qtd" value="${esc(e.qtd||'')}"></div>
+    <div><label>Data</label><input type="date" id="t_data" value="${esc(e.data||'')}"></div>
+    <div><label>Horário</label><input id="t_hora" value="${esc(e.hora||'')}" placeholder="14h30"></div>
+    <div class="full"><label>Local</label><input id="t_local" value="${esc(e.local||'')}"></div>
+    <div><label>Situação</label><select id="t_status">${['Orçamento','Contratado','Fotografado','Em edição','Entregue'].map(x=>
+      `<option ${e.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
+  </div>
+
+  <h2 style="font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin:22px 0 10px">Itens contratados</h2>
+  <div class="campos" style="grid-template-columns:1fr 1fr">
+    <div><label>Categoria</label><select id="t_addCat">${Object.entries(cfg.categorias).map(([k,n])=>
+      `<option value="${k}">${n}</option>`).join('')}</select></div>
+    <div><label>Item</label><select id="t_addItem"></select></div>
+  </div>
+  <div class="acoes" style="margin-top:10px"><button class="btn sm" id="t_add">${IC.mais}<span>Adicionar item</span></button></div>
+  <div id="t_lista" style="margin-top:12px">${itens.map(linhaItem).join('')||'<div class="meta">Nenhum item adicionado.</div>'}</div>
+
+  <div class="campos" style="margin-top:20px">
+    <div><label>Valor total (R$)</label><input id="t_total" value="${esc(e.total||'')}"></div>
+    <div><label>Reserva (R$)</label><input id="t_sinal" value="${esc(e.sinal||'')}"></div>
+  </div>
+  <div class="acoes" style="margin-top:10px">
+    <button class="btn sm" id="t_somar">Somar itens no total</button>
+    <button class="btn sm" id="t_calc">Calcular reserva</button>
+  </div>
+  <div class="dica">Um trabalho pode reunir ensaio, evento, produtos e revelações ao mesmo tempo. Os valores vêm do catálogo e podem ser ajustados aqui, sem alterar o cadastro.</div>`, [
+    ...(t?[{txt:'Excluir', perigo:true, acao:()=>{ fecharModal(); confirmar('Excluir este trabalho?', ()=>{
+      DB.trabalhos = DB.trabalhos.filter(x=>x.id!==t.id); store.salvar(); desenha(); toast('Trabalho excluído'); }); }}]:[]),
+    {txt:'Cancelar', acao:fecharModal},
+    {txt:'Salvar', pri:true, acao:()=>{
+      lerLinhas();
+      const v = id => $('#t_'+id).value.trim();
+      const dados = {clienteId:$('#t_cli').value, categoria:v('cat'), nicho:v('nicho'), plano:v('plano'),
+        qtd:v('qtd'), data:v('data'), hora:v('hora'), local:v('local'), total:v('total'), sinal:v('sinal'),
+        status:v('status'), itens:itens};
+      if(t) Object.assign(t,dados); else DB.trabalhos.push(Object.assign({id:uid()},dados));
+      store.salvar(); fecharModal(); desenha(); toast('Trabalho salvo','ok');
+    }}
+  ]);
+
+  function opcoesItem(){
+    const cat = $('#t_addCat').value;
+    $('#t_addItem').innerHTML = (cfg.catalogo||[]).filter(x=>x.cat===cat)
+      .map(x=>`<option value="${x.id}">${esc(x.nome)}${x.valor?' — R$ '+brl(x.valor):''}</option>`).join('')
+      || '<option value="">— nenhum item nesta categoria —</option>';
+  }
+  function pinta(){
+    $('#t_lista').innerHTML = itens.map(linhaItem).join('') || '<div class="meta">Nenhum item adicionado.</div>';
+    document.querySelectorAll('[data-rm]').forEach(b=> b.onclick = ()=>{
+      const k = itens.findIndex(x=>x.id===b.dataset.rm); if(k>=0) itens.splice(k,1); pinta(); });
+  }
+  function lerLinhas(){
+    itens.forEach(it=>{
+      const q = document.querySelector(`[data-q="${it.id}"]`), vl = document.querySelector(`[data-vl="${it.id}"]`);
+      if(q) it.qtd = Number(q.value)||1;
+      if(vl) it.valor = Number(vl.value)||0;
+    });
+  }
+  $('#t_addCat').onchange = opcoesItem;
+  $('#t_add').onclick = ()=>{
+    lerLinhas();
+    const base = (cfg.catalogo||[]).find(x=>x.id===$('#t_addItem').value);
+    if(!base) return toast('Cadastre itens nesta categoria em Serviços','erro');
+    itens.push({id:uid(), catalogoId:base.id, cat:base.cat, nome:base.nome, qtd:1, valor:base.valor||0});
+    pinta();
+    if(!$('#t_nicho').value.trim() && (base.cat==='ensaio'||base.cat==='evento')){
+      $('#t_nicho').value = base.nome;
+      $('#t_cat').value = base.cat==='evento' ? 'evento' : 'ensaio';
+    }
+  };
+  $('#t_somar').onclick = ()=>{
+    lerLinhas();
+    const soma = itens.reduce((a,x)=>a + (Number(x.valor)||0)*(Number(x.qtd)||1), 0);
+    $('#t_total').value = brl(soma); toast('Total somado','ok');
+  };
+  $('#t_calc').onclick = ()=>{
+    const tot = num($('#t_total').value);
+    if(!tot) return toast('Preencha o valor total','erro');
+    const pc = $('#t_cat').value==='evento' ? cfg.regras.sinalEvento : cfg.regras.sinalEnsaio;
+    $('#t_sinal').value = brl(tot*pc/100);
+  };
+  opcoesItem(); pinta();
+}
+
+/* ---------- catálogo de serviços ---------- */
+let abaCat = 'ensaio';
+
+function vCatalogo(){
+  acaoTopo('Novo item', IC.mais, ()=>formItem(), true);
+  const cats = DB.config.categorias;
+  const todos = DB.config.catalogo||[];
+  const lista = todos.filter(x=>x.cat===abaCat && (!busca || x.nome.toLowerCase().includes(busca)));
+
+  $('#vista').innerHTML = `
+  <div class="card">
+    <div class="chips" style="margin-bottom:18px">${Object.entries(cats).map(([k,n])=>
+      `<button class="chip" data-aba="${k}" aria-pressed="${k===abaCat}">${n}
+        <span style="opacity:.6;margin-left:6px">${todos.filter(x=>x.cat===k).length}</span></button>`).join('')}</div>
+    ${lista.length? `<table class="tabela">
+      <thead><tr><th>Item</th><th>Observação</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+      <tbody>${lista.map(x=>`<tr data-id="${x.id}">
+        <td><div class="nome">${esc(x.nome)}</div></td>
+        <td class="meta">${esc(x.obs||'—')}</td>
+        <td style="text-align:right">${x.valor? '<span class="tag g">R$ '+brl(x.valor)+'</span>' : '<span class="tag">sem valor</span>'}</td>
+        <td style="text-align:right;width:40px"><span class="meta">editar</span></td>
+      </tr>`).join('')}</tbody></table>`
+    : `<div class="vazio"><div class="t">Nenhum item em ${cats[abaCat]}</div>
+       <div class="d">Cadastre os itens desta categoria com nome e valor. Depois é só selecionar no trabalho.</div></div>`}
+  </div>
+  <div class="card"><h2>Preenchimento rápido</h2>
+    <p class="dica" style="margin:0 0 14px">Informe os valores de vários itens de uma vez. Deixe em branco o que ainda não tem preço.</p>
+    <div class="campos">${todos.filter(x=>x.cat===abaCat).map(x=>
+      `<div><label>${esc(x.nome)}</label><input type="number" step="0.01" data-preco="${x.id}" value="${x.valor||''}" placeholder="0,00"></div>`).join('')}</div>
+    ${todos.filter(x=>x.cat===abaCat).length? '<div class="acoes" style="margin-top:16px"><button class="btn pri" id="salvarPrecos">Salvar valores</button></div>':''}
+  </div>`;
+
+  document.querySelectorAll('[data-aba]').forEach(b=> b.onclick = ()=>{ abaCat=b.dataset.aba; desenha(); });
+  document.querySelectorAll('.tabela tbody tr').forEach(tr=> tr.onclick = ()=>
+    formItem((DB.config.catalogo||[]).find(x=>x.id===tr.dataset.id)));
+  const sp = $('#salvarPrecos');
+  if(sp) sp.onclick = ()=>{
+    document.querySelectorAll('[data-preco]').forEach(inp=>{
+      const it = DB.config.catalogo.find(x=>x.id===inp.dataset.preco);
+      if(it) it.valor = Number(inp.value)||0;
+    });
+    store.salvar(); desenha(); toast('Valores salvos','ok');
+  };
+}
+
+function formItem(x){
+  const e = x||{cat:abaCat}, cats = DB.config.categorias;
+  modal(x?'Editar item':'Novo item', `<div class="campos">
+    <div><label>Categoria</label><select id="i_cat">${Object.entries(cats).map(([k,n])=>
+      `<option value="${k}" ${e.cat===k?'selected':''}>${n}</option>`).join('')}</select></div>
+    <div><label>Valor (R$)</label><input type="number" step="0.01" id="i_valor" value="${e.valor||''}"></div>
+    <div class="full"><label>Nome do item</label><input id="i_nome" value="${esc(e.nome||'')}"></div>
+    <div class="full"><label>Observação</label><input id="i_obs" value="${esc(e.obs||'')}" placeholder="tamanho, acabamento, duração…"></div>
+  </div>`, [
+    ...(x?[{txt:'Excluir', perigo:true, acao:()=>{ fecharModal(); confirmar('Excluir este item do catálogo?', ()=>{
+      DB.config.catalogo = DB.config.catalogo.filter(y=>y.id!==x.id); store.salvar(); desenha(); toast('Item excluído'); }); }}]:[]),
+    {txt:'Cancelar', acao:fecharModal},
+    {txt:'Salvar', pri:true, acao:()=>{
+      const nome = $('#i_nome').value.trim();
+      if(!nome) return toast('Informe o nome do item','erro');
+      const dados = {cat:$('#i_cat').value, nome, valor:Number($('#i_valor').value)||0, obs:$('#i_obs').value.trim()};
+      if(x) Object.assign(x,dados); else DB.config.catalogo.push(Object.assign({id:uid()},dados));
+      store.salvar(); fecharModal(); desenha(); toast('Item salvo','ok');
+    }}
+  ]);
+}
+
+/* ---------- emitir ---------- */
+function vEmitir(){
+  if(!DB.clientes.length){
+    $('#vista').innerHTML = `<div class="card"><div class="vazio"><div class="t">Cadastre um cliente primeiro</div>
+      <div class="d">Vá em Clientes e importe a planilha ou cadastre manualmente.</div></div></div>`; return;
+  }
+  const cid = (selCliente && DB.clientes.find(c=>c.id===selCliente.id) ? selCliente.id : DB.clientes[0].id);
+  const cli = DB.clientes.find(c=>c.id===cid);
+  const tras = DB.trabalhos.filter(t=>t.clienteId===cid);
+  if(selTrabalho && !tras.find(t=>t.id===selTrabalho)) selTrabalho = null;
+  const tid = selTrabalho || (tras[0] && tras[0].id) || '';
+  const tra = DB.trabalhos.find(t=>t.id===tid);
+
+  $('#vista').innerHTML = `
+  <div class="card">
+    <h2>Para quem</h2>
+    <div class="campos">
+      <div><label>Cliente</label><select id="e_cli">${DB.clientes.map(c=>
+        `<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
+      <div><label>Trabalho</label><select id="e_tra">
+        <option value="">— sem trabalho vinculado —</option>
+        ${tras.map(t=>`<option value="${t.id}" ${t.id===tid?'selected':''}>${esc(t.nicho||t.plano||'Trabalho')} · ${dbr(t.data)||'sem data'}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="acoes" style="margin-top:12px">
+      <button class="btn sm" id="e_novoTra">${IC.mais}<span>Novo trabalho</span></button>
+      ${tra?`<button class="btn sm" id="e_editTra">Editar trabalho</button>`:''}
+    </div>
+  </div>
+
+  <div class="card"><h2>Dados do cliente — edite se faltar algo</h2>
+    <div class="campos">
+      <div class="full"><label>Nome completo</label><input id="x_nome" value="${esc(cli.nome||'')}"></div>
+      <div><label>CPF ou CNPJ</label><input id="x_cpf" value="${esc(cli.cpf||'')}"></div>
+      <div><label>RG</label><input id="x_rg" value="${esc(cli.rg||'')}"></div>
+      <div><label>Telefone</label><input id="x_tel" value="${esc(cli.tel||'')}"></div>
+      <div><label>Nascimento</label><input id="x_nasc" value="${esc(cli.nasc||'')}" placeholder="dd/mm/aaaa"></div>
+      <div class="full"><label>E-mail</label><input id="x_email" value="${esc(cli.email||'')}"></div>
+      <div class="full"><label>Endereço</label><input id="x_end" value="${esc(cli.end||'')}"></div>
+    </div>
+    <div class="dica">As alterações são gravadas no cadastro do cliente assim que você sai do campo.</div>
+  </div>
+
+  <div class="card"><h2>Dados do trabalho</h2>
+    ${tra? `<div class="campos">
+      <div><label>Identificação</label><input id="y_nicho" value="${esc(tra.nicho||'')}"></div>
+      <div><label>Plano</label><input id="y_plano" value="${esc(tra.plano||'')}"></div>
+      <div><label>Imagens</label><input type="number" id="y_qtd" value="${esc(tra.qtd||'')}"></div>
+      <div><label>Data</label><input type="date" id="y_data" value="${esc(tra.data||'')}"></div>
+      <div><label>Horário</label><input id="y_hora" value="${esc(tra.hora||'')}"></div>
+      <div><label>Local</label><input id="y_local" value="${esc(tra.local||'')}"></div>
+      <div><label>Valor total (R$)</label><input id="y_total" value="${esc(tra.total||'')}"></div>
+      <div><label>Reserva (R$)</label><input id="y_sinal" value="${esc(tra.sinal||'')}"></div>
+    </div>
+    <div style="margin-top:14px"><label>Itens contratados</label>
+      <div class="chips">${(tra.itens||[]).length? (tra.itens||[]).map(x=>
+        `<span class="chip" aria-pressed="true" style="cursor:default">${esc(x.nome)}${x.qtd>1?' ×'+x.qtd:''}</span>`).join('')
+        : '<span class="meta">Nenhum item. Use “Editar trabalho” para adicionar.</span>'}</div></div>`
+    : `<div class="meta">Sem trabalho vinculado — os campos de plano, data e valores sairão em branco no documento, para preenchimento à mão.</div>`}
+  </div>
+
+  <div class="card"><h2>Documento</h2>
+    <div class="docgrid">${Object.entries(MOD).map(([k,m])=>
+      `<button class="doccard" data-tipo="${k}"><span class="t">${m.nome}</span><span class="d">${m.desc}</span>
+       <span class="n">${DB.docs.filter(d=>d.tipo===k&&d.clienteId===cid).length} emitido(s)</span></button>`).join('')}</div>
+    <div class="dica">O documento abre em nova aba já formatado, e a janela de impressão aparece em seguida. Escolha “Salvar como PDF” para arquivar.</div>
+  </div>`;
+
+  $('#e_cli').onchange = ev => { selCliente = DB.clientes.find(c=>c.id===ev.target.value); selTrabalho=null; desenha(); };
+  $('#e_tra').onchange = ev => { selTrabalho = ev.target.value||null; desenha(); };
+  $('#e_novoTra').onclick = ()=> formTrabalho(null, cid);
+  const bt = $('#e_editTra'); if(bt) bt.onclick = ()=> formTrabalho(tra);
+
+  const mapaCli = {nome:'nome',cpf:'cpf',rg:'rg',tel:'tel',nasc:'nasc',email:'email',end:'end'};
+  Object.entries(mapaCli).forEach(([campo,chave])=>{
+    const inp = $('#x_'+campo); if(!inp) return;
+    inp.onblur = ()=>{ cli[chave] = inp.value.trim(); store.salvar(); };
+  });
+  if(tra){
+    ['nicho','plano','qtd','data','hora','local','total','sinal'].forEach(campo=>{
+      const inp = $('#y_'+campo); if(!inp) return;
+      inp.onblur = ()=>{ tra[campo] = inp.value.trim(); store.salvar(); };
+    });
+  }
+  document.querySelectorAll('.doccard').forEach(b=> b.onclick = ()=>{
+    Object.entries(mapaCli).forEach(([campo,chave])=>{ const inp=$('#x_'+campo); if(inp) cli[chave]=inp.value.trim(); });
+    if(tra) ['nicho','plano','qtd','data','hora','local','total','sinal'].forEach(campo=>{
+      const inp=$('#y_'+campo); if(inp) tra[campo]=inp.value.trim(); });
+    store.salvar();
+    imprimir(b.dataset.tipo, cli, tra);
+  });
+}
+
+/* ---------- histórico ---------- */
+function vHistorico(){
+  if(DB.docs.length) acaoTopo('Limpar histórico', '', ()=>confirmar('Apagar todo o histórico de documentos emitidos?', ()=>{
+    DB.docs=[]; store.salvar(); desenha(); toast('Histórico limpo'); }));
+  const lista = DB.docs.filter(d=>!busca || (d.nomeCliente+(MOD[d.tipo]?MOD[d.tipo].nome:'')+d.numero).toLowerCase().includes(busca));
+  if(!DB.docs.length){
+    $('#vista').innerHTML = `<div class="card"><div class="vazio">
+      <div class="t">Nenhum documento emitido ainda</div>
+      <div class="d">Todo documento gerado fica registrado aqui, com número e data.</div></div></div>`; return;
+  }
+  $('#vista').innerHTML = `<div class="card"><table class="tabela">
+    <thead><tr><th>Nº</th><th>Documento</th><th>Cliente</th><th>Emitido em</th><th></th></tr></thead>
+    <tbody>${lista.map(d=>`<tr data-id="${d.id}">
+      <td class="meta">${d.numero}</td>
+      <td><div class="nome">${MOD[d.tipo]?MOD[d.tipo].nome:d.tipo}</div></td>
+      <td class="meta">${esc(d.nomeCliente)}</td>
+      <td class="meta">${new Date(d.quando).toLocaleString('pt-BR')}</td>
+      <td style="text-align:right"><span class="tag">reemitir</span></td>
+    </tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('.tabela tbody tr').forEach(tr=> tr.onclick = ()=>{
+    const d = DB.docs.find(x=>x.id===tr.dataset.id);
+    const cli = DB.clientes.find(c=>c.id===d.clienteId) || {nome:d.nomeCliente};
+    const tra = DB.trabalhos.find(t=>t.id===d.trabalhoId);
+    if(d.html){
+      PREV = {tipo:d.tipo, cli, tra, numero:d.numero, d:d.dados, editando:false, registrado:true};
+      $('#prevTit').textContent = (MOD[d.tipo]?MOD[d.tipo].nome:d.tipo) + ' · ' + (cli.nome||'');
+      $('#prevPapel').innerHTML = d.html; $('#prevPapel').contentEditable='false';
+      $('#prev').classList.remove('editando'); $('#prevEditar').textContent='Editar';
+      $('#prev').classList.add('on'); injetaEstiloPapel();
+    } else imprimir(d.tipo, cli, tra);
+  });
+}
+
+/* ---------- modelos ---------- */
+function vModelos(){
+  acaoTopo('Restaurar padrão', '', ()=>confirmar('Restaurar todos os modelos ao texto original? As suas edições serão perdidas.', ()=>{
+    DB.modelos={}; store.salvar(); desenha(); toast('Modelos restaurados','ok'); }));
+  $('#vista').innerHTML = `<div class="card"><h2>Documentos disponíveis</h2>
+    <div class="docgrid">${Object.entries(MOD).map(([k,m])=>{
+      const edit = DB.modelos[k] ? '<span class="tag g" style="margin-top:8px;display:inline-block">editado</span>' : '';
+      return `<button class="doccard" data-mod="${k}"><span class="t">${m.nome}</span><span class="d">${m.desc}</span>${edit}</button>`;
+    }).join('')}</div>
+    <div class="dica">Edite o texto de qualquer documento. Use os campos entre chaves para inserir dados automaticamente — eles são substituídos na emissão.</div></div>`;
+  document.querySelectorAll('[data-mod]').forEach(b=> b.onclick = ()=> editarModelo(b.dataset.mod));
+}
+
+function editarModelo(k){
+  const atual = (DB.modelos[k] && DB.modelos[k].tpl) || MOD[k].tpl;
+  modal('Editar · '+MOD[k].nome, `
+    <label>Campos disponíveis — clique para copiar</label>
+    <div class="chips" id="vars" style="margin-bottom:16px">${CAMPOS.map(c=>`<span class="var" data-c="${c}">{{${c}}}</span>`).join('')}</div>
+    <label>Texto do documento (aceita HTML)</label>
+    <textarea id="mod_tpl" style="min-height:340px;font-family:ui-monospace,Menlo,monospace;font-size:12px">${esc(atual)}</textarea>
+    <div class="dica">Blocos condicionais: <span class="var">{{#ensaio}}…{{/ensaio}}</span> e <span class="var">{{#evento}}…{{/evento}}</span> aparecem só na categoria correspondente.</div>`, [
+    {txt:'Restaurar este', acao:()=>{ delete DB.modelos[k]; store.salvar(); fecharModal(); desenha(); toast('Modelo restaurado','ok'); }},
+    {txt:'Cancelar', acao:fecharModal},
+    {txt:'Salvar', pri:true, acao:()=>{
+      DB.modelos[k] = {tpl:$('#mod_tpl').value}; store.salvar(); fecharModal(); desenha(); toast('Modelo salvo','ok'); }}
+  ]);
+  document.querySelectorAll('#vars .var').forEach(v=> v.onclick = ()=>{
+    const ta = $('#mod_tpl'), p = ta.selectionStart, txt = `{{${v.dataset.c}}}`;
+    ta.value = ta.value.slice(0,p)+txt+ta.value.slice(ta.selectionEnd);
+    ta.focus(); ta.selectionStart = ta.selectionEnd = p+txt.length;
+  });
+}
+
+/* ---------- ajustes ---------- */
+function vAjustes(){
+  const c = DB.config, e = c.empresa, r = c.regras;
+  $('#vista').innerHTML = `
+  <div class="card"><h2>Dados do estúdio</h2><div class="campos">
+    <div class="full"><label>Razão social</label><input id="a_nome" value="${esc(e.nome)}"></div>
+    <div><label>CNPJ</label><input id="a_cnpj" value="${esc(e.cnpj)}"></div>
+    <div><label>Cidade e UF</label><input id="a_cidade" value="${esc(e.cidade)}"></div>
+    <div class="full"><label>Endereço</label><input id="a_end" value="${esc(e.end)}"></div>
+    <div><label>Telefone</label><input id="a_tel" value="${esc(e.tel)}"></div>
+    <div><label>E-mail</label><input id="a_email" value="${esc(e.email)}"></div>
+    <div class="full"><label>Dados bancários</label><input id="a_banco" value="${esc(e.banco)}"></div>
+    <div class="full"><label>Favorecido</label><input id="a_fav" value="${esc(e.fav)}"></div>
+  </div></div>
+
+  <div class="card"><h2>Regras e prazos</h2><div class="campos">
+    <div><label>Reserva ensaio (%)</label><input type="number" id="a_se" value="${r.sinalEnsaio}"></div>
+    <div><label>Reserva evento (%)</label><input type="number" id="a_sv" value="${r.sinalEvento}"></div>
+    <div class="full"><label>Aviso de remarcação — ensaio</label><input id="a_re" value="${esc(r.remEnsaio)}"></div>
+    <div class="full"><label>Aviso de remarcação — evento</label><input id="a_rv" value="${esc(r.remEvento)}"></div>
+    <div><label>Prazo base (dias úteis)</label><input type="number" id="a_pb" value="${r.prazoBase}"></div>
+    <div><label>Prazo médio (dias úteis)</label><input type="number" id="a_pm" value="${r.prazoMedio}"></div>
+    <div><label>Limite base (imagens)</label><input type="number" id="a_lb" value="${r.limiteBase}"></div>
+    <div><label>Limite médio (imagens)</label><input type="number" id="a_lm" value="${r.limiteMedio}"></div>
+    <div><label>Dias de backup</label><input type="number" id="a_db" value="${r.diasBackup}"></div>
+    <div><label>Dias para retirada</label><input type="number" id="a_dr" value="${r.diasRetirada}"></div>
+    <div><label>Prazo produtos (dias)</label><input type="number" id="a_pp" value="${r.prazoProdutos}"></div>
+    <div><label>Dias p/ pagar extras</label><input type="number" id="a_dp" value="${r.diasPagarExtras}"></div>
+  </div></div>
+
+  <div class="card"><h2>Taxas</h2><div class="campos">
+    <div><label>Domingo e feriado (R$)</label><input type="number" id="a_td" value="${r.taxaDomingo}"></div>
+    <div><label>Custódia mensal (R$)</label><input type="number" id="a_tc" value="${r.taxaCustodia}"></div>
+    <div><label>Reenvio de arquivos (R$)</label><input type="number" id="a_tr" value="${r.taxaReenvio}"></div>
+    <div><label>Diagramação remota (R$)</label><input type="number" id="a_tg" value="${r.taxaDiagramacao}"></div>
+    <div><label>Externo no mesmo dia (R$)</label><input type="number" id="a_te" value="${r.taxaExterno}"></div>
+  </div></div>
+
+  <div class="card"><h2>Serviços e produtos</h2>
+    <p class="dica" style="margin:0 0 14px">O catálogo de ensaios, eventos, produtos e revelações — com os valores de cada item — fica na seção Serviços.</p>
+    <div class="acoes"><button class="btn" id="a_irCat">Abrir Serviços</button>
+      <button class="btn" id="a_restCat">Restaurar catálogo padrão</button></div>
+  </div>
+
+  <div class="card"><h2>Backup</h2>
+    <p class="dica" style="margin:0 0 14px">Os dados ficam apenas neste navegador. Exporte um backup com frequência e guarde em outro lugar.</p>
+    <div class="acoes">
+      <button class="btn" id="a_exp">Exportar backup</button>
+      <button class="btn" id="a_imp">Importar backup</button>
+      <button class="btn perigo" id="a_zerar">Apagar tudo</button>
+    </div>
+  </div>
+
+  <div class="acoes" style="margin-top:18px"><button class="btn pri" id="a_salvar">Salvar ajustes</button></div>`;
+
+  $('#a_salvar').onclick = ()=>{
+    const v = id => $('#a_'+id).value.trim(), n = id => Number($('#a_'+id).value)||0;
+    Object.assign(c.empresa, {nome:v('nome'),cnpj:v('cnpj'),cidade:v('cidade'),end:v('end'),
+      tel:v('tel'),email:v('email'),banco:v('banco'),fav:v('fav')});
+    Object.assign(c.regras, {sinalEnsaio:n('se'),sinalEvento:n('sv'),remEnsaio:v('re'),remEvento:v('rv'),
+      prazoBase:n('pb'),prazoMedio:n('pm'),limiteBase:n('lb'),limiteMedio:n('lm'),
+      diasBackup:n('db'),diasRetirada:n('dr'),prazoProdutos:n('pp'),diasPagarExtras:n('dp'),
+      taxaDomingo:n('td'),taxaCustodia:n('tc'),taxaReenvio:n('tr'),taxaDiagramacao:n('tg'),taxaExterno:n('te')});
+    store.salvar(); toast('Ajustes salvos','ok');
+  };
+  $('#a_irCat').onclick = ()=>ir('catalogo');
+  $('#a_restCat').onclick = ()=>confirmar('Restaurar o catálogo padrão? Os itens e valores atuais serão substituídos.', ()=>{
+    DB.config.catalogo = JSON.parse(JSON.stringify(PADRAO.catalogo));
+    DB.config.catalogo.forEach(x=>x.id=uid());
+    store.salvar(); desenha(); toast('Catálogo restaurado','ok'); });
+  $('#a_exp').onclick = ()=>{
+    const b = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+    const a = el('a'); a.href = URL.createObjectURL(b);
+    a.download = 'lumiar-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    a.click(); toast('Backup exportado','ok');
+  };
+  $('#a_imp').onclick = ()=>$('#arqBkp').click();
+  $('#a_zerar').onclick = ()=>confirmar('Apagar <b>todos</b> os clientes, trabalhos, documentos e ajustes? Não há como desfazer.', ()=>{
+    DB = {clientes:[],trabalhos:[],docs:[],modelos:{},config:JSON.parse(JSON.stringify(PADRAO)),seq:1};
+    DB.config.catalogo.forEach(x=>x.id=uid());
+    store.salvar(); desenha(); toast('Tudo apagado'); });
+}
+
+/* ══════════════ IMPORTAÇÃO ══════════════ */
+function importar(file){
+  const r = new FileReader();
+  r.onload = ev => {
+    try{
+      const wb = XLSX.read(ev.target.result,{type:'array'});
+      const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      let novos = 0, atualizados = 0;
+      linhas.forEach(l=>{
+        const g = (...ks)=>{ for(const k of ks) for(const col in l) if(col.toLowerCase().includes(k)) return String(l[col]||'').trim(); return ''; };
+        const nome = g('nome completo','nome'); if(!nome) return;
+        const cpf = g('cpf');
+        const nasc = (()=>{ const d=g('nascimento'); const m=d.match(/(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${m[1]}`:d; })();
+        const dados = {nome, cpf, rg:g('rg'), tel:g('telefone','celular'),
+          email:g('endereço de email','e-mail','email'), end:g('endereço residencial','endereço'),
+          nasc, conheceu:g('conheceu')};
+        const ex = DB.clientes.find(c=>(c.cpf&&c.cpf===cpf) || c.nome.toLowerCase()===nome.toLowerCase());
+        if(ex){ Object.assign(ex,dados); atualizados++; }
+        else { DB.clientes.push(Object.assign({id:uid()},dados)); novos++; }
+      });
+      store.salvar(); desenha();
+      toast(`${novos} novo(s) · ${atualizados} atualizado(s)`,'ok');
+    }catch(err){ toast('Não consegui ler o arquivo','erro'); }
+  };
+  r.readAsArrayBuffer(file);
+}
+$('#arqPlan').onchange = e => { if(e.target.files[0]) importar(e.target.files[0]); e.target.value=''; };
+$('#arqBkp').onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => { try{
+      const d = JSON.parse(ev.target.result);
+      if(!d.clientes) throw 0;
+      DB = Object.assign({clientes:[],trabalhos:[],docs:[],modelos:{},config:JSON.parse(JSON.stringify(PADRAO)),seq:1}, d);
+      store.salvar(); desenha(); toast('Backup importado','ok');
+    }catch(x){ toast('Arquivo de backup inválido','erro'); } };
+  r.readAsText(f); e.target.value='';
+};
+
+/* ══════════════ INÍCIO ══════════════ */
+store.carregar();
+let temaSalvo='escuro'; try{ temaSalvo = localStorage.getItem('lumiar-tema')||'escuro'; }catch(e){}
+aplicaTema(temaSalvo);
+desenha();
+</script>
+</body>
+</html>
