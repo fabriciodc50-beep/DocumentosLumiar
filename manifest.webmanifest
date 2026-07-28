@@ -1,0 +1,24 @@
+{
+  "name": "Lumiar · Central de Documentos",
+  "short_name": "Lumiar Docs",
+  "description": "Central de documentos do Lumiar Retratos Studio: clientes, trabalhos, catálogo de serviços e emissão de contratos, ordens de serviço, recibos e termos.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#100F0E",
+  "theme_color": "#100F0E",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Emitir documento", "url": "./index.html#emitir", "icons": [{ "src": "icone-192.png", "sizes": "192x192" }] },
+    { "name": "Clientes", "url": "./index.html#clientes", "icons": [{ "src": "icone-192.png", "sizes": "192x192" }] },
+    { "name": "Serviços", "url": "./index.html#catalogo", "icons": [{ "src": "icone-192.png", "sizes": "192x192" }] }
+  ]
+}
