@@ -240,8 +240,10 @@ input[type=file]{position:absolute;width:1px;height:1px;opacity:0;clip:rect(0 0 
 #prev .aviso{font-size:11.5px;color:var(--gold);display:none}
 #prev.editando .aviso{display:block}
 #prev .area{flex:1;overflow-y:auto;padding:26px 16px 60px;background:var(--bg2)}
-#prev .papel{max-width:820px;margin:0 auto;background:#fff;color:#161513;border-radius:6px;
-  box-shadow:0 12px 40px rgba(0,0,0,.28);padding:44px 46px}
+#prev .papel{width:210mm;max-width:100%;margin:0 auto;background:#fff;color:#161513;border-radius:4px;
+  box-shadow:0 12px 40px rgba(0,0,0,.28);padding:16mm 14mm 18mm}
+#prev .reguas{max-width:210mm;margin:0 auto 10px;display:flex;justify-content:space-between;
+  font-size:10.5px;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase}
 #prev.editando .papel{outline:2px solid var(--gold);outline-offset:6px}
 @media (max-width:640px){#prev .papel{padding:26px 20px}}
 
@@ -297,9 +299,14 @@ input[type=file]{position:absolute;width:1px;height:1px;opacity:0;clip:rect(0 0 
     <span class="sp"></span>
     <button class="btn" id="prevVoltar">Voltar</button>
     <button class="btn" id="prevEditar">Editar</button>
+    <button class="btn" id="prevAssinar">Assinar aqui</button>
+    <button class="btn" id="prevEnviar">Enviar para assinar</button>
     <button class="btn pri" id="prevImprimir">Imprimir</button>
   </div>
-  <div class="area"><div class="papel" id="prevPapel"></div></div>
+  <div class="area">
+    <div class="reguas"><span>A4 · 210 × 297 mm</span><span id="prevPaginas"></span></div>
+    <div class="papel" id="prevPapel"></div>
+  </div>
 </div>
 <div id="toast"></div>
 <input type="file" id="arqPlan" accept=".xlsx,.xls,.csv">
@@ -312,6 +319,9 @@ const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h
 const uid = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const hoje = ()=> new Date().toLocaleDateString('pt-BR');
+const hojeISO = ()=> new Date().toISOString().slice(0,10);
+let DATA_DOC = hojeISO();
+const dataDoc = ()=> dbr(DATA_DOC) || hoje();
 const brl = n => (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const num = v => parseFloat(String(v??'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.'))||0;
 const dbr = iso => iso ? iso.split('-').reverse().join('/') : '';
@@ -327,44 +337,130 @@ const PADRAO = {
     email:'lumiar.retratos.oficial@outlook.com',
     banco:'Banco 290 — PagSeguro · Agência 0001 · Conta corrente 08328921-5',
     fav:'Fabrício Higino Gonçalves de Carvalho', cidade:'Guaíra – SP'},
+  assinatura:{servico:'', url:'', mensagem:'Olá {{nome}}! Segue o {{documento}} da Lumiar Retratos para leitura e assinatura digital. É rápido, feito pelo próprio celular, e não precisa imprimir nada.\n\n{{link}}\n\nQualquer dúvida, estou à disposição.'},
   regras:{sinalEnsaio:30, sinalEvento:50, remEnsaio:'48 (quarenta e oito) horas', remEvento:'7 (sete) dias corridos',
     prazoBase:30, prazoMedio:40, limiteBase:40, limiteMedio:60,
     taxaDomingo:150, taxaCustodia:30, taxaReenvio:80, taxaDiagramacao:40, taxaExterno:150,
     diasBackup:90, diasRetirada:30, prazoProdutos:90, diasPagarExtras:3},
   categorias:{ensaio:'Ensaios', evento:'Eventos', produto:'Produtos', revelacao:'Revelações'},
+  subprod:{parede:'Parede', estante:'Álbuns e estojos', mesa:'Mesa e mão', presente:'Presente', arquivo:'Arquivo', outros:'Outros'},
   catalogo:[
     ...['Gestante','Newborn','Bebês · 1 aninho','Infantil','Pré-adolescente','Família','Feminino',
         'Lookbook','Intimista','Boudoir','Casal','Pré-wedding','Book de 15 anos','Ensaio de beca',
         'Retrato profissional'].map(n=>({cat:'ensaio',nome:n,valor:0,obs:''})),
     ...['Casamento','Casamento civil','15 anos','Chá revelação','Chá de bebê','Batizado',
         'Aniversário infantil','Aniversário adulto e bodas','Formatura'].map(n=>({cat:'evento',nome:n,valor:0,obs:''})),
-    ...['Álbum 20×20','Álbum 25×25','Álbum 30×30','Álbum dos pais','Caixa para álbum',
-        'Quadro emoldurado','Tela em canvas','Acrílico','Composição de parede','Caixa de fotografias',
-        'Ampliação emoldurada','Porta-retrato','Tela de assinaturas','Mini álbum','Arquivos em caixa'
-       ].map(n=>({cat:'produto',nome:n,valor:0,obs:''})),
-    ...['Revelação 10×15','Revelação 13×18','Revelação 15×21','Revelação 20×30','Revelação 30×40',
-        'Revelação 40×60','Impressão fine art','Retoque avulso tradicional','Retoque avulso VIP',
-        'Retoque avulso fine art','Imagem adicional','Taxa de envio do laboratório'
-       ].map(n=>({cat:'revelacao',nome:n,valor:0,obs:''}))
+    // ---- Produtos, com especificações configuráveis ----
+    ...[
+      ['parede','Quadro emoldurado',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'20×30 cm',v:0},{n:'30×40 cm',v:0},{n:'40×60 cm',v:0},{n:'50×70 cm',v:0},{n:'60×90 cm',v:0},{n:'70×100 cm',v:0}]},
+        {id:'g2',nome:'Moldura',opcoes:[{n:'Madeira natural',v:0},{n:'Madeira escura',v:0},{n:'Branca',v:0},{n:'Preta',v:0},{n:'Dourada',v:0}]},
+        {id:'g3',nome:'Proteção',opcoes:[{n:'Vidro',v:0},{n:'Acrílico',v:0},{n:'Sem proteção',v:0}]},
+        {id:'g4',nome:'Passe-partout',opcoes:[{n:'Sem passe-partout',v:0},{n:'Com passe-partout',v:0}]}]}],
+      ['parede','Tela em canvas',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'30×40 cm',v:0},{n:'40×60 cm',v:0},{n:'60×90 cm',v:0},{n:'80×120 cm',v:0}]},
+        {id:'g2',nome:'Borda',opcoes:[{n:'Espelhada',v:0},{n:'Branca',v:0},{n:'Preta',v:0}]}]}],
+      ['parede','Acrílico / metacrilato',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'30×40 cm',v:0},{n:'40×60 cm',v:0},{n:'60×90 cm',v:0}]},
+        {id:'g2',nome:'Espessura',opcoes:[{n:'4 mm',v:0},{n:'6 mm',v:0},{n:'8 mm',v:0}]}]}],
+      ['parede','Composição de parede',{grupos:[
+        {id:'g1',nome:'Peças',opcoes:[{n:'3 peças',v:0},{n:'5 peças',v:0},{n:'7 peças',v:0}]},
+        {id:'g2',nome:'Tamanho das peças',opcoes:[{n:'20×30 cm',v:0},{n:'30×40 cm',v:0},{n:'40×60 cm',v:0}]}]}],
+      ['estante','Álbum',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'15×15 cm',v:0},{n:'20×20 cm',v:0},{n:'25×25 cm',v:0},{n:'30×30 cm',v:0},{n:'20×30 cm',v:0},{n:'30×40 cm',v:0}]},
+        {id:'g2',nome:'Capa',opcoes:[{n:'Capa fotográfica',v:0},{n:'Capa em tecido',v:0},{n:'Capa em couro sintético',v:0},{n:'Capa em madeira',v:0},{n:'Capa com janela',v:0}]},
+        {id:'g3',nome:'Gravação',opcoes:[{n:'Sem gravação',v:0},{n:'Gravação a laser',v:0},{n:'Baixo relevo',v:0}]},
+        {id:'g4',nome:'Papel',opcoes:[{n:'Fosco',v:0},{n:'Brilho',v:0},{n:'Perolizado',v:0},{n:'Fine art',v:0}]}],
+        incremento:{rotulo:'Lâminas',unidadeCliente:'páginas',fator:2,minimo:10,valor:0}}],
+      ['estante','Álbum dos pais / réplica',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'15×15 cm',v:0},{n:'20×20 cm',v:0}]},
+        {id:'g2',nome:'Capa',opcoes:[{n:'Igual ao principal',v:0},{n:'Capa fotográfica',v:0},{n:'Capa em tecido',v:0}]}],
+        incremento:{rotulo:'Lâminas',unidadeCliente:'páginas',fator:2,minimo:10,valor:0}}],
+      ['estante','Fotolivro',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'15×20 cm',v:0},{n:'20×20 cm',v:0},{n:'20×30 cm',v:0}]},
+        {id:'g2',nome:'Capa',opcoes:[{n:'Capa dura fotográfica',v:0},{n:'Capa flexível',v:0}]}],
+        incremento:{rotulo:'Lâminas',unidadeCliente:'páginas',fator:2,minimo:10,valor:0}}],
+      ['estante','Caixa / estojo do álbum',{grupos:[
+        {id:'g1',nome:'Tipo',opcoes:[{n:'Luva',v:0},{n:'Semibox',v:0},{n:'Box',v:0},{n:'Estojo',v:0},{n:'Caixa com tampa',v:0},{n:'Caixa acrílica',v:0}]},
+        {id:'g2',nome:'Material',opcoes:[{n:'Tecido',v:0},{n:'Couro sintético',v:0},{n:'Papel especial',v:0},{n:'Madeira',v:0},{n:'Acrílico',v:0}]},
+        {id:'g3',nome:'Personalização',opcoes:[{n:'Sem personalização',v:0},{n:'Nome gravado',v:0},{n:'Janela com foto',v:0}]}]}],
+      ['mesa','Caixa de fotografias (folio box)',{grupos:[
+        {id:'g1',nome:'Tamanho das fotos',opcoes:[{n:'10×15 cm',v:0},{n:'15×21 cm',v:0},{n:'20×30 cm',v:0}]},
+        {id:'g2',nome:'Material',opcoes:[{n:'Tecido',v:0},{n:'Couro sintético',v:0},{n:'Madeira',v:0}]},
+        {id:'g3',nome:'Montagem',opcoes:[{n:'Fotos soltas',v:0},{n:'Em passe-partout',v:0}]},
+        {id:'g4',nome:'Pen drive',opcoes:[{n:'Sem pen drive',v:0},{n:'Com pen drive',v:0}]}],
+        incremento:{rotulo:'Fotografias',unidadeCliente:'fotografias',fator:1,minimo:10,valor:0}}],
+      ['mesa','Mini álbum',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'10×10 cm',v:0},{n:'13×13 cm',v:0},{n:'15×15 cm',v:0}]},
+        {id:'g2',nome:'Capa',opcoes:[{n:'Capa fotográfica',v:0},{n:'Capa em tecido',v:0}]}],
+        incremento:{rotulo:'Lâminas',unidadeCliente:'páginas',fator:2,minimo:10,valor:0}}],
+      ['mesa','Porta-retrato de mesa',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'10×15 cm',v:0},{n:'13×18 cm',v:0},{n:'15×21 cm',v:0},{n:'20×30 cm',v:0}]},
+        {id:'g2',nome:'Material',opcoes:[{n:'Madeira',v:0},{n:'Acrílico',v:0},{n:'Metal',v:0}]}]}],
+      ['presente','Ampliação emoldurada',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'15×21 cm',v:0},{n:'20×30 cm',v:0},{n:'30×40 cm',v:0},{n:'40×60 cm',v:0}]},
+        {id:'g2',nome:'Moldura',opcoes:[{n:'Madeira natural',v:0},{n:'Branca',v:0},{n:'Preta',v:0}]},
+        {id:'g3',nome:'Acabamento',opcoes:[{n:'Fosco',v:0},{n:'Brilho',v:0}]}]}],
+      ['presente','Conjunto de ampliações em caixa',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'15×21 cm',v:0},{n:'20×30 cm',v:0}]}],
+        incremento:{rotulo:'Fotografias',unidadeCliente:'fotografias',fator:1,minimo:5,valor:0}}],
+      ['presente','Peça de lembrança',{grupos:[
+        {id:'g1',nome:'Tipo',opcoes:[{n:'Ímã',v:0},{n:'Marcador de página',v:0},{n:'Porta-retrato pequeno',v:0},{n:'Cartão impresso',v:0}]}],
+        incremento:{rotulo:'Unidades',unidadeCliente:'unidades',fator:1,minimo:10,valor:0}}],
+      ['arquivo','Pen drive personalizado em caixa',{grupos:[
+        {id:'g1',nome:'Capacidade',opcoes:[{n:'16 GB',v:0},{n:'32 GB',v:0},{n:'64 GB',v:0}]},
+        {id:'g2',nome:'Caixa',opcoes:[{n:'Madeira',v:0},{n:'Tecido',v:0},{n:'Acrílico',v:0}]}]}],
+      ['outros','Tela de assinaturas',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'40×60 cm',v:0},{n:'50×70 cm',v:0},{n:'60×90 cm',v:0}]},
+        {id:'g2',nome:'Suporte',opcoes:[{n:'Canvas',v:0},{n:'Papel montado',v:0}]}]}]
+    ].map(([sub,nome,espec])=>({cat:'produto',sub,nome,valor:0,obs:'',espec:espec||null})),
+    ...[
+      ['Revelação',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'10×15 cm',v:0},{n:'13×18 cm',v:0},{n:'15×21 cm',v:0},{n:'20×30 cm',v:0},{n:'30×40 cm',v:0},{n:'40×60 cm',v:0}]},
+        {id:'g2',nome:'Acabamento',opcoes:[{n:'Fosco',v:0},{n:'Brilho',v:0},{n:'Perolizado',v:0}]},
+        {id:'g3',nome:'Borda',opcoes:[{n:'Sem borda',v:0},{n:'Com borda branca',v:0}]}],
+        incremento:{rotulo:'Cópias',unidadeCliente:'cópias',fator:1,minimo:1,valor:0}}],
+      ['Impressão fine art',{grupos:[
+        {id:'g1',nome:'Tamanho',opcoes:[{n:'20×30 cm',v:0},{n:'30×40 cm',v:0},{n:'40×60 cm',v:0},{n:'50×75 cm',v:0}]},
+        {id:'g2',nome:'Papel',opcoes:[{n:'Algodão texturizado',v:0},{n:'Algodão liso',v:0},{n:'Baritado',v:0}]}]}],
+      ['Retoque avulso',{grupos:[
+        {id:'g1',nome:'Nível',opcoes:[{n:'Tradicional',v:0},{n:'VIP / Premium',v:0},{n:'Fine art',v:0}]}],
+        incremento:{rotulo:'Imagens',unidadeCliente:'imagens',fator:1,minimo:1,valor:0}}],
+      ['Imagem adicional',{incremento:{rotulo:'Imagens',unidadeCliente:'imagens',fator:1,minimo:1,valor:0}}],
+      ['Taxa de envio do laboratório',null]
+    ].map(([nome,espec])=>({cat:'revelacao',nome,valor:0,obs:'',espec:espec||null}))
   ]
 };
 
 PADRAO.catalogo.forEach(x=>x.id = Math.random().toString(36).slice(2,9));
 let DB = {clientes:[], trabalhos:[], docs:[], modelos:{}, config:JSON.parse(JSON.stringify(PADRAO)), seq:1};
 
+// classifica um produto por palavras-chave do nome, para migrar catálogos antigos
+function adivinharSub(nome){
+  const n = String(nome||'').toLowerCase();
+  if(/quadro|tela|canvas|acr[íi]lic|metacril|parede|gallery|composi/.test(n)) return 'parede';
+  if(/[áa]lbum|album|fotolivro|folha|capa|luva|estojo|caixa para/.test(n)) return 'estante';
+  if(/folio|caixa de fotograf|porta[- ]?retrato|mini/.test(n)) return 'mesa';
+  if(/amplia|lembran|presente/.test(n)) return 'presente';
+  if(/pen ?drive|pendrive|usb|arquivo/.test(n)) return 'arquivo';
+  return 'outros';
+}
+
 const store = {
   carregar(){ try{ const d=JSON.parse(localStorage.getItem('lumiar-docs')||'null');
       if(d){ DB = Object.assign(DB,d); DB.config = Object.assign(JSON.parse(JSON.stringify(PADRAO)), d.config||{}); }
       if(!DB.config.catalogo || !DB.config.catalogo.length) DB.config.catalogo = JSON.parse(JSON.stringify(PADRAO.catalogo));
-      DB.config.catalogo.forEach(x=>{ if(!x.id) x.id = uid(); });
+      DB.config.catalogo.forEach(x=>{ if(!x.id) x.id = uid(); if(!Array.isArray(x.pacotes)) x.pacotes = [];
+        if(x.cat==='produto' && !x.sub) x.sub = adivinharSub(x.nome); });
       if(!DB.config.categorias) DB.config.categorias = PADRAO.categorias;
+      if(!DB.config.subprod) DB.config.subprod = JSON.parse(JSON.stringify(PADRAO.subprod));
     }catch(e){} },
   salvar(){ try{ localStorage.setItem('lumiar-docs', JSON.stringify(DB)); }catch(e){ toast('Não foi possível salvar neste navegador','erro'); } }
 };
 
 /* ══════════════ MODELOS ══════════════ */
 const CAMPOS = ['nome','cpf','rg','nasc','tel','email','endereco','conheceu',
-  'categoria','nicho','plano','qtd','data','hora','local','servicos','produtos','itens',
+  'categoria','nicho','plano','qtd','data','hora','local','servicos','produtos','itensLista','itens',
   'total','sinal','saldo','pct','avisoRem','hoje','numero',
   'empresa','cnpj','endEmpresa','telEmpresa','emailEmpresa','banco','favorecido','cidade',
   'prazoBase','prazoMedio','limiteBase','limiteMedio','taxaDomingo','taxaCustodia','taxaReenvio',
@@ -406,6 +502,8 @@ contrato:{nome:'Contrato de prestação de serviços', desc:'com anexos de image
 <div class="lin"><span class="r">Valor total</span><span class="v">R$ {{total}}</span></div>
 <div class="lin"><span class="r">Reserva</span><span class="v">R$ {{sinal}}</span></div>
 <div class="lin"><span class="r">Saldo</span><span class="v">R$ {{saldo}}</span></div></div></div>
+
+{{#itensLista}}<h2>Itens e especificações</h2>{{itensLista}}{{/itensLista}}
 
 <h2>Cláusula 1ª — Objeto</h2>
 <p>Prestação de serviços de fotografia autoral, compreendendo planejamento, direção, captação, curadoria, tratamento e entrega das imagens, conforme o plano acima.</p>
@@ -775,42 +873,57 @@ distrato:{nome:'Termo de cancelamento', desc:'formaliza o encerramento', tpl:`
 /* ══════════════ IMPRESSÃO ══════════════ */
 const CSSDOC = `<style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Poppins:wght@200;300;400;500&display=swap');
-:root{--ink:#161513;--soft:#4E4B44;--gold:#8a6d3f;--gilt:#C7A96B;--line:#E2DED4;--mute:#8A867D;--wash:#F4F1E9}
+:root{--ink:#161513;--soft:#3E3B35;--gold:#7a5f36;--gilt:#C7A96B;--line:#D8D3C7;--mute:#6E6A61;--wash:#F4F1E9}
 *{box-sizing:border-box}
-body{margin:0;background:#fff;color:var(--ink);font-family:'Poppins',sans-serif;font-weight:300;font-size:10.6pt;line-height:1.55}
-.pg{max-width:760px;margin:0 auto;padding:30px 26px 44px}
-.topo{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
-.mk{font-family:'Cormorant Garamond',serif;font-size:19pt;letter-spacing:.04em;line-height:1}
-.mk small{display:block;font-family:'Poppins',sans-serif;font-size:6pt;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-top:2px}
-.topo .id{text-align:right;font-size:8.5pt;color:var(--mute)}
-h1{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:20pt;margin:0 0 4px}
-.sub{color:var(--mute);font-size:9pt;margin:0 0 18px}
-h2{font-size:7pt;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin:20px 0 8px}
-h3{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:12pt;margin:14px 0 4px}
-p{margin:0 0 9px}
-ul{margin:0 0 9px;padding-left:17px}li{margin-bottom:4px}
-.bloco{border:1px solid var(--line);border-radius:9px;padding:12px 13px}
-.lin{display:grid;grid-template-columns:118px 1fr;gap:9px;padding:6px 0;border-bottom:1px solid var(--line)}
+@page{ size:A4; margin:18mm 16mm 20mm; }
+body{margin:0;background:#fff;color:var(--ink);font-family:'Poppins',sans-serif;font-weight:300;
+  font-size:11pt;line-height:1.6;text-rendering:optimizeLegibility}
+.pg{max-width:180mm;margin:0 auto;padding:14mm 0}
+.topo{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
+.mk{font-family:'Cormorant Garamond',serif;font-size:18pt;letter-spacing:.04em;line-height:1}
+.mk small{display:block;font-family:'Poppins',sans-serif;font-size:6.5pt;letter-spacing:.3em;
+  text-transform:uppercase;color:var(--gold);margin-top:2px}
+.topo .id{text-align:right;font-size:9pt;color:var(--mute)}
+h1{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:22pt;line-height:1.15;margin:0 0 4px}
+.sub{color:var(--mute);font-size:10pt;margin:0 0 16px}
+h2{font-size:8pt;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:16px 0 7px;
+  page-break-after:avoid;break-after:avoid}
+h3{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:13pt;margin:12px 0 4px;
+  page-break-after:avoid;break-after:avoid}
+p{margin:0 0 8px;orphans:3;widows:3}
+ul{margin:0 0 8px;padding-left:16px}li{margin-bottom:3px;orphans:2;widows:2}
+.bloco{border:1px solid var(--line);border-radius:6px;padding:10px 12px;page-break-inside:avoid;break-inside:avoid}
+.lin{display:grid;grid-template-columns:34mm 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
 .lin:last-child{border-bottom:0}
-.lin .r{font-size:8pt;color:var(--mute)}
-.lin .v{border-bottom:1px dotted #CFC7B6;min-height:15px}
-.dupla{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-table{width:100%;border-collapse:collapse;font-size:9.5pt;margin:9px 0}
-th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:6.8pt;letter-spacing:.13em;text-transform:uppercase;color:var(--gold);font-weight:400;background:var(--wash)}
-.par{display:block;font-size:9.4pt;color:var(--soft);margin:0 0 8px;padding-left:11px;border-left:2px solid var(--line)}
+.lin .r{font-size:8.5pt;color:var(--mute)}
+.lin .v{border-bottom:1px dotted #C4BCAB;min-height:14px}
+.dupla{display:grid;grid-template-columns:1fr 1fr;gap:9px;page-break-inside:avoid;break-inside:avoid}
+table{width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0;page-break-inside:avoid;break-inside:avoid}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:7.5pt;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:400;background:var(--wash)}
+.par{display:block;font-size:10pt;color:var(--soft);margin:0 0 7px;padding-left:10px;
+  border-left:2px solid var(--line);orphans:3;widows:3}
 .par b{color:var(--ink);font-weight:500}
-.nota{background:var(--wash);border-radius:9px;padding:11px 12px;margin:10px 0;font-size:9.4pt;color:var(--soft)}
-.destaque{border:1px solid var(--gilt);background:#FDFBF6;border-radius:9px;padding:11px 12px;margin:10px 0;font-size:9.6pt}
-.opt{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid var(--line)}
-.opt .bx{width:14px;height:14px;flex:0 0 14px;border:1px solid #9E978A;border-radius:3px;margin-top:2px}
-.assina{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:26px}
-.assina .c{border-top:1px solid var(--ink);padding-top:6px;font-size:8.5pt;color:var(--soft)}
-.assina .c b{display:block;color:var(--ink);font-size:9.4pt;font-weight:500}
-.total{display:flex;justify-content:space-between;border-top:2px solid var(--ink);padding-top:10px;font-size:11pt}
-.total b{font-family:'Cormorant Garamond',serif;font-size:15pt;font-weight:500}
-.rod{margin-top:24px;padding-top:11px;border-top:1px solid var(--line);font-size:7.6pt;color:var(--mute);text-align:center}
-@media print{.pg{padding:0}.bloco,table,.assina{break-inside:avoid}}
+.nota{background:var(--wash);border-radius:6px;padding:9px 11px;margin:9px 0;font-size:10pt;color:var(--soft);
+  page-break-inside:avoid;break-inside:avoid}
+.destaque{border:1px solid var(--gilt);background:#FDFBF6;border-radius:6px;padding:9px 11px;margin:9px 0;
+  font-size:10.2pt;page-break-inside:avoid;break-inside:avoid}
+.opt{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);page-break-inside:avoid;break-inside:avoid}
+.opt .bx{width:13px;height:13px;flex:0 0 13px;border:1px solid #8E887C;border-radius:2px;margin-top:2px}
+.assina{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px;page-break-inside:avoid;break-inside:avoid}
+.assina .c{border-top:1px solid var(--ink);padding-top:5px;font-size:9pt;color:var(--soft);min-height:26mm;
+  display:flex;flex-direction:column;justify-content:flex-end}
+.assina .c b{display:block;color:var(--ink);font-size:9.6pt;font-weight:500}
+.assina .c img.firma{max-height:18mm;max-width:100%;object-fit:contain;align-self:flex-start;margin-bottom:2mm}
+.total{display:flex;justify-content:space-between;border-top:2px solid var(--ink);padding-top:8px;font-size:11.5pt}
+.total b{font-family:'Cormorant Garamond',serif;font-size:16pt;font-weight:500}
+.rod{margin-top:20px;padding-top:9px;border-top:1px solid var(--line);font-size:8pt;color:var(--mute);text-align:center}
+@media print{
+  .pg{padding:0;max-width:none}
+  .topo{position:running(cab)}
+  a{color:inherit;text-decoration:none}
+}
 </style>`;
 
 function dados(cli, tra, numero){
@@ -826,12 +939,16 @@ function dados(cli, tra, numero){
     servicos:(()=>{ const l=(t.itens||[]).filter(x=>x.cat==='ensaio'||x.cat==='evento')
         .map(x=>x.nome+(x.qtd>1?' ('+x.qtd+')':'')); return l.length?l.join(' · '):(t.nicho||'—'); })(),
     produtos:(()=>{ const l=(t.itens||[]).filter(x=>x.cat==='produto'||x.cat==='revelacao')
-        .map(x=>x.nome+(x.qtd>1?' ('+x.qtd+')':'')); return l.length?l.join(' · '):'—'; })(),
-    itens:(()=>{ const l=(t.itens||[]); return l.length? l.map(x=>x.nome+(x.qtd>1?' ×'+x.qtd:'')).join(' · '):'—'; })(),
+        .map(x=>x.nome+(x.detalhe?' — '+x.detalhe:'')+(x.qtd>1?' ('+x.qtd+')':'')+(x.incluso?' — incluso':'')); return l.length?l.join(' · '):'—'; })(),
+    itens:(()=>{ const l=(t.itens||[]); return l.length? l.map(x=>x.nome+(x.detalhe?' — '+x.detalhe:'')+(x.qtd>1?' ×'+x.qtd:'')).join(' · '):'—'; })(),
+    itensLista:(()=>{ const l=(t.itens||[]); if(!l.length) return '';
+        return '<table><tr><th>Item</th><th>Especificação</th><th style="width:52px;text-align:center">Qtd.</th></tr>'
+          + l.map(x=>`<tr><td>${x.nome}</td><td>${x.detalhe||'—'}</td><td style="text-align:center">${x.qtd||1}</td></tr>`).join('')
+          + '</table>'; })(),
     total:tot?brl(tot):'______________', sinal:sin?brl(sin):'______________',
     saldo:(tot&&sin)?brl(tot-sin):'______________',
     pct: ev?`${r.sinalEvento}% (cinquenta por cento)`:`${r.sinalEnsaio}% (trinta por cento)`,
-    avisoRem: ev?r.remEvento:r.remEnsaio, hoje:hoje(), numero:numero||'________',
+    avisoRem: ev?r.remEvento:r.remEnsaio, hoje:dataDoc(), numero:numero||'________',
     empresa:c.empresa.nome, cnpj:c.empresa.cnpj, endEmpresa:c.empresa.end,
     telEmpresa:c.empresa.tel, emailEmpresa:c.empresa.email, banco:c.empresa.banco,
     favorecido:c.empresa.fav, cidade:c.empresa.cidade,
@@ -858,7 +975,8 @@ function imprimir(tipo, cli, tra){
   const m = DB.modelos[tipo] || MOD[tipo];
   const numero = String(DB.seq).padStart(4,'0');
   const d = dados(cli, tra, numero);
-  const corpo = render(m.tpl || MOD[tipo].tpl, d);
+  const fonte = (m.blocos && m.blocos.length) ? blocosParaHTML(m.blocos) : (m.tpl || MOD[tipo].tpl);
+  const corpo = render(fonte, d);
   const c = DB.config.empresa;
 
   PREV = {tipo, cli, tra, numero, d, editando:false, registrado:false};
@@ -873,6 +991,11 @@ function imprimir(tipo, cli, tra){
   $('#prev').classList.add('on');
   $('#prev .area').scrollTop = 0;
   injetaEstiloPapel();
+  setTimeout(()=>{
+    const alt = $('#prevPapel').scrollHeight, mm = alt/ (document.body.clientWidth ? 1 : 1);
+    const pag = Math.max(1, Math.ceil(alt / (297/25.4*96)));
+    $('#prevPaginas').textContent = pag + (pag===1?' página':' páginas');
+  }, 120);
 }
 
 function injetaEstiloPapel(){
@@ -894,6 +1017,91 @@ function registraEmissao(){
   PREV.registrado = true;
 }
 
+function assinaturaNoAparelho(){
+  const campos = [...$('#prevPapel').querySelectorAll('.assina .c')];
+  if(!campos.length) return toast('Este documento não tem campo de assinatura','erro');
+  const opts = campos.map((c,i)=>{
+    const b = c.querySelector('b');
+    return `<button type="button" class="btn" data-campo="${i}" style="justify-content:flex-start">${esc(b?b.textContent:'Campo '+(i+1))}</button>`;
+  }).join('');
+  modal('Assinar no aparelho', `<p style="margin-top:0">Escolha onde a assinatura será aplicada:</p>
+    <div class="docgrid">${opts}</div>`, [{txt:'Cancelar', acao:fecharModal}]);
+  document.querySelectorAll('[data-campo]').forEach(b=> b.onclick = ()=> desenhaFirma(Number(b.dataset.campo)));
+}
+
+function desenhaFirma(idx){
+  modal('Assine com o dedo ou o mouse', `
+    <div style="background:#fff;border-radius:12px;padding:10px">
+      <canvas id="fc" style="width:100%;height:200px;touch-action:none;display:block"></canvas>
+    </div>
+    <div class="dica">Assine dentro da área branca. Use o botão limpar se quiser refazer.</div>`, [
+    {txt:'Limpar', acao:()=>{ const c=$('#fc'); c.getContext('2d').clearRect(0,0,c.width,c.height); }},
+    {txt:'Cancelar', acao:fecharModal},
+    {txt:'Aplicar', pri:true, acao:()=>{
+      const c = $('#fc');
+      const campo = [...$('#prevPapel').querySelectorAll('.assina .c')][idx];
+      const antiga = campo.querySelector('img.firma'); if(antiga) antiga.remove();
+      const img = document.createElement('img'); img.className='firma'; img.src = c.toDataURL('image/png');
+      campo.insertBefore(img, campo.firstChild);
+      fecharModal(); toast('Assinatura aplicada','ok');
+    }}
+  ]);
+  const c = $('#fc'), ctx = c.getContext('2d');
+  const r = c.getBoundingClientRect();
+  c.width = r.width*2; c.height = 200*2; ctx.scale(2,2);
+  ctx.lineWidth = 1.8; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#161513';
+  let desenhando = false;
+  const pos = e => { const b = c.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e; return {x:t.clientX-b.left, y:t.clientY-b.top}; };
+  const ini = e => { desenhando = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); };
+  const mov = e => { if(!desenhando) return; const p = pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); };
+  const fim = ()=> desenhando = false;
+  c.addEventListener('mousedown',ini); c.addEventListener('mousemove',mov);
+  addEventListener('mouseup',fim);
+  c.addEventListener('touchstart',ini,{passive:false}); c.addEventListener('touchmove',mov,{passive:false});
+  c.addEventListener('touchend',fim);
+}
+
+function enviarParaAssinar(){
+  const cfg = DB.config.assinatura || {};
+  const cli = PREV.cli || {};
+  const tel = String(cli.tel||'').replace(/\D/g,'');
+  const msg = (cfg.mensagem || 'Olá {{nome}}! Segue o {{documento}} da Lumiar Retratos para leitura e assinatura digital. É rápido, feito pelo próprio celular, e não precisa imprimir nada.\n\n{{link}}\n\nQualquer dúvida, estou à disposição.')
+    .replace(/\{\{nome\}\}/g, (cli.nome||'').split(' ')[0])
+    .replace(/\{\{documento\}\}/g, (MOD[PREV.tipo]||{}).nome||'documento')
+    .replace(/\{\{link\}\}/g, '[cole aqui o link gerado pelo serviço]');
+
+  modal('Enviar para assinatura online', `
+    <p style="margin-top:0">O caminho tem três passos:</p>
+    <div class="hist"><div class="ic">1</div><div><div class="t">Salve o documento em PDF</div>
+      <div class="m">Use o botão Imprimir e escolha “Salvar como PDF”.</div></div></div>
+    <div class="hist"><div class="ic">2</div><div><div class="t">Suba no serviço de assinatura</div>
+      <div class="m">${cfg.servico? esc(cfg.servico) : 'Configure o seu serviço em Ajustes'} — o serviço gera o link e registra data, hora e IP de quem assinou.</div></div></div>
+    <div class="hist"><div class="ic">3</div><div><div class="t">Envie o link ao cliente</div>
+      <div class="m">Cole o link na mensagem abaixo e mande pelo WhatsApp.</div></div></div>
+    <label style="margin-top:16px">Mensagem para o cliente</label>
+    <textarea id="asMsg" style="min-height:130px">${esc(msg)}</textarea>
+    <div class="acoes" style="margin-top:12px">
+      ${cfg.url?`<button type="button" class="btn sm" id="asAbrir">Abrir ${esc(cfg.servico||'serviço')}</button>`:''}
+      <button type="button" class="btn sm" id="asCopiar">Copiar mensagem</button>
+      ${tel?`<button type="button" class="btn sm" id="asZap">Abrir WhatsApp do cliente</button>`:''}
+    </div>
+    <div class="dica">A assinatura eletrônica sem certificado digital é válida quando as partes concordam com ela — e o seu contrato já prevê isso na cláusula de disposições gerais.</div>`, [
+    {txt:'Fechar', acao:fecharModal},
+    {txt:'Marcar como enviado', pri:true, acao:()=>{ registraEmissao(); marcaAssinatura('enviado'); fecharModal(); toast('Registrado como enviado para assinatura','ok'); }}
+  ]);
+  if($('#asAbrir')) $('#asAbrir').onclick = ()=> window.open(cfg.url,'_blank');
+  $('#asCopiar').onclick = ()=>{ navigator.clipboard?.writeText($('#asMsg').value); toast('Mensagem copiada','ok'); };
+  if($('#asZap')) $('#asZap').onclick = ()=> window.open('https://wa.me/55'+tel+'?text='+encodeURIComponent($('#asMsg').value),'_blank');
+}
+
+function marcaAssinatura(estado){
+  const d = DB.docs.find(x=>x.numero===PREV.numero && x.tipo===PREV.tipo);
+  if(d){ d.assinatura = estado; store.salvar(); }
+}
+
+$('#prevAssinar').onclick = assinaturaNoAparelho;
+$('#prevEnviar').onclick = enviarParaAssinar;
 $('#prevVoltar').onclick = ()=>{ $('#prev').classList.remove('on'); desenha(); };
 $('#prevEditar').onclick = ()=>{
   PREV.editando = !PREV.editando;
@@ -1237,6 +1445,61 @@ function lerChips(id){
   return [...document.querySelectorAll('#'+id+' .chip')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.dataset.v);
 }
 
+function configurarEspec(base, cb){
+  const g = (base.espec&&base.espec.grupos)||[], inc = base.espec&&base.espec.incremento;
+  const html = `
+    ${g.map(gr=>`<div style="margin-bottom:14px"><label>${esc(gr.nome)}</label>
+      <div class="chips" data-grupo="${gr.id}">${gr.opcoes.map((o,k)=>
+        `<button type="button" class="chip" data-op="${gr.id}:${k}" aria-pressed="${k===0}">${esc(o.n)}${o.v?' +R$ '+brl(o.v):''}</button>`).join('')}</div></div>`).join('')}
+    ${inc?`<div class="campos" style="grid-template-columns:1fr 1fr;margin-top:6px">
+      <div><label>${esc(inc.rotulo)}</label><input type="number" id="cf_qtd" min="${inc.minimo}" value="${inc.minimo}"></div>
+      <div><label>Equivale a</label><div id="cf_eq" style="padding:11px 0;font-size:14px"></div></div>
+    </div>
+    <div class="dica">Mínimo de ${inc.minimo} ${esc(inc.rotulo.toLowerCase())}${inc.valor?` · cada ${esc(inc.rotulo.toLowerCase()).replace(/s$/,'')} extra soma R$ ${brl(inc.valor)}`:''}.</div>`:''}
+    <div class="card" style="background:var(--bg2);padding:14px;margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div><div class="meta">Valor calculado</div><div id="cf_val" style="font-family:var(--serif);font-size:26px"></div></div>
+      <div style="max-width:60%;text-align:right"><div class="meta" id="cf_desc"></div></div>
+    </div>`;
+  modal('Configurar · '+base.nome, html, [
+    {txt:'Cancelar', acao:fecharModal},
+    {txt:'Adicionar', pri:true, acao:()=>{ const r = calcula(); fecharModal(); cb(r); }}
+  ]);
+  function escolhidas(){
+    return g.map(gr=>{
+      const b = document.querySelector(`[data-grupo="${gr.id}"] .chip[aria-pressed="true"]`);
+      const k = b ? Number(b.dataset.op.split(':')[1]) : 0;
+      return {grupo:gr.nome, op:gr.opcoes[k]};
+    });
+  }
+  function calcula(){
+    const es = escolhidas();
+    let valor = Number(base.valor)||0;
+    es.forEach(x=> valor += Number(x.op.v)||0);
+    let qtd = inc ? Math.max(inc.minimo, Number(($('#cf_qtd')||{}).value)||inc.minimo) : null;
+    if(inc && qtd>inc.minimo) valor += (qtd-inc.minimo)*(Number(inc.valor)||0);
+    const partes = es.map(x=>x.op.n);
+    if(inc){ const eq = qtd*(inc.fator||1);
+      partes.push(`${qtd} ${inc.rotulo.toLowerCase()}${inc.fator>1?` (${eq} ${inc.unidadeCliente})`:''}`); }
+    return {valor, detalhe:partes.join(' · '), qtdInc:qtd};
+  }
+  function atualiza(){
+    const r = calcula();
+    $('#cf_val').textContent = 'R$ '+brl(r.valor);
+    $('#cf_desc').textContent = r.detalhe;
+    if(inc && $('#cf_eq')){
+      const q = Math.max(inc.minimo, Number($('#cf_qtd').value)||inc.minimo);
+      $('#cf_eq').textContent = (q*(inc.fator||1))+' '+inc.unidadeCliente;
+    }
+  }
+  document.querySelectorAll('[data-op]').forEach(b=> b.onclick = ()=>{
+    const gid = b.dataset.op.split(':')[0];
+    document.querySelectorAll(`[data-grupo="${gid}"] .chip`).forEach(x=>x.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true'); atualiza();
+  });
+  if($('#cf_qtd')) $('#cf_qtd').oninput = atualiza;
+  atualiza();
+}
+
 function formTrabalho(t, clienteId){
   const e = t||{}, cfg = DB.config;
   const cid = e.clienteId || clienteId || (DB.clientes[0]&&DB.clientes[0].id);
@@ -1245,10 +1508,11 @@ function formTrabalho(t, clienteId){
 
   const linhaItem = it => `<div class="hist" data-item="${it.id}">
       <div class="ic">${IC.doc}</div>
-      <div style="flex:1"><div class="t">${esc(it.nome)}</div><div class="m">${cfg.categorias[it.cat]||it.cat}</div></div>
+      <div style="flex:1"><div class="t">${esc(it.nome)}</div><div class="m">${it.detalhe?esc(it.detalhe):(cfg.categorias[it.cat]||it.cat)}${it.incluso?' · incluso no pacote':''}</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="number" min="1" value="${it.qtd||1}" data-q="${it.id}" style="width:64px;padding:7px 8px" aria-label="Quantidade">
         <input type="number" step="0.01" value="${it.valor||''}" data-vl="${it.id}" style="width:104px;padding:7px 8px" placeholder="0,00" aria-label="Valor">
+        ${it.catalogoId?`<button class="btn sm" data-cfg="${it.id}" title="Ajustar especificações">⚙</button>`:''}
         <button class="btn sm perigo" data-rm="${it.id}">×</button>
       </div></div>`;
 
@@ -1269,10 +1533,11 @@ function formTrabalho(t, clienteId){
   </div>
 
   <h2 style="font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin:22px 0 10px">Itens contratados</h2>
-  <div class="campos" style="grid-template-columns:1fr 1fr">
+  <div class="campos" style="grid-template-columns:1fr 1fr 1fr">
     <div><label>Categoria</label><select id="t_addCat">${Object.entries(cfg.categorias).map(([k,n])=>
       `<option value="${k}">${n}</option>`).join('')}</select></div>
     <div><label>Item</label><select id="t_addItem"></select></div>
+    <div id="t_pacWrap"><label>Pacote</label><select id="t_addPac"></select></div>
   </div>
   <div class="acoes" style="margin-top:10px"><button class="btn sm" id="t_add">${IC.mais}<span>Adicionar item</span></button></div>
   <div id="t_lista" style="margin-top:12px">${itens.map(linhaItem).join('')||'<div class="meta">Nenhum item adicionado.</div>'}</div>
@@ -1302,14 +1567,43 @@ function formTrabalho(t, clienteId){
 
   function opcoesItem(){
     const cat = $('#t_addCat').value;
-    $('#t_addItem').innerHTML = (cfg.catalogo||[]).filter(x=>x.cat===cat)
-      .map(x=>`<option value="${x.id}">${esc(x.nome)}${x.valor?' — R$ '+brl(x.valor):''}</option>`).join('')
-      || '<option value="">— nenhum item nesta categoria —</option>';
+    if(cat==='produto'){
+      $('#t_addItem').innerHTML = optsProdutoPorSub() || '<option value="">— nenhum produto —</option>';
+    } else {
+      $('#t_addItem').innerHTML = (cfg.catalogo||[]).filter(x=>x.cat===cat)
+        .map(x=>`<option value="${x.id}">${esc(x.nome)}${(x.pacotes&&x.pacotes.length)?' — '+x.pacotes.length+' pacote(s)':(x.valor?' — R$ '+brl(x.valor):'')}</option>`).join('')
+        || '<option value="">— nenhum item nesta categoria —</option>';
+    }
+    opcoesPac();
+  }
+  function opcoesPac(){
+    const base = (cfg.catalogo||[]).find(x=>x.id===$('#t_addItem').value);
+    const pks = base ? (base.pacotes||[]) : [];
+    const wrap = $('#t_pacWrap');
+    if(pks.length){
+      wrap.style.display = '';
+      $('#t_addPac').innerHTML = pks.map(p=>`<option value="${p.id}">${esc(p.nome||'(sem nome)')}${p.valor?' — R$ '+brl(p.valor):''}${p.imagens?' · '+p.imagens+' fotos':''}</option>`).join('');
+    } else {
+      wrap.style.display = 'none';
+      $('#t_addPac').innerHTML = '';
+    }
   }
   function pinta(){
     $('#t_lista').innerHTML = itens.map(linhaItem).join('') || '<div class="meta">Nenhum item adicionado.</div>';
     document.querySelectorAll('[data-rm]').forEach(b=> b.onclick = ()=>{
-      const k = itens.findIndex(x=>x.id===b.dataset.rm); if(k>=0) itens.splice(k,1); pinta(); });
+      lerLinhas(); const k = itens.findIndex(x=>x.id===b.dataset.rm); if(k>=0) itens.splice(k,1); pinta(); somaTotal(); });
+    document.querySelectorAll('[data-cfg]').forEach(b=> b.onclick = ()=>{
+      lerLinhas();
+      const it = itens.find(x=>x.id===b.dataset.cfg);
+      const base = (cfg.catalogo||[]).find(x=>x.id===it.catalogoId);
+      if(!base || !base.espec || !((base.espec.grupos||[]).length || base.espec.incremento))
+        return toast('Este item não tem especificações cadastradas');
+      configurarEspec(base, r=>{ it.valor = r.valor; it.detalhe = r.detalhe; pinta(); somaTotal(); });
+    });
+  }
+  function somaTotal(){
+    const soma = itens.reduce((a,x)=>a + (Number(x.valor)||0)*(Number(x.qtd)||1), 0);
+    const c = $('#t_total'); if(c) c.value = brl(soma);
   }
   function lerLinhas(){
     itens.forEach(it=>{
@@ -1319,16 +1613,39 @@ function formTrabalho(t, clienteId){
     });
   }
   $('#t_addCat').onchange = opcoesItem;
+  $('#t_addItem').onchange = opcoesPac;
   $('#t_add').onclick = ()=>{
     lerLinhas();
     const base = (cfg.catalogo||[]).find(x=>x.id===$('#t_addItem').value);
     if(!base) return toast('Cadastre itens nesta categoria em Serviços','erro');
-    itens.push({id:uid(), catalogoId:base.id, cat:base.cat, nome:base.nome, qtd:1, valor:base.valor||0});
-    pinta();
-    if(!$('#t_nicho').value.trim() && (base.cat==='ensaio'||base.cat==='evento')){
+    const ehEnsEv = (base.cat==='ensaio'||base.cat==='evento');
+    const pkSel = $('#t_addPac');
+    const pk = (base.pacotes||[]).find(p=>p.id===(pkSel?pkSel.value:''));
+    if(ehEnsEv && (base.pacotes||[]).length && !pk) return toast('Escolha um pacote','erro');
+
+    if(pk){
+      itens.push({id:uid(), catalogoId:base.id, cat:base.cat, nome:base.nome+' · '+(pk.nome||'Pacote'),
+        qtd:1, valor:pk.valor||0, pacote:pk.nome, imagens:pk.imagens||0});
+      (pk.produtos||[]).forEach(p=> itens.push({id:uid(), cat:'produto', nome:p.nome, qtd:p.qtd||1, valor:0, incluso:true}));
       $('#t_nicho').value = base.nome;
       $('#t_cat').value = base.cat==='evento' ? 'evento' : 'ensaio';
+      $('#t_plano').value = pk.nome || '';
+      if(pk.imagens) $('#t_qtd').value = pk.imagens;
+    } else if(base.espec && ((base.espec.grupos||[]).length || base.espec.incremento)){
+      configurarEspec(base, r=>{
+        itens.push({id:uid(), catalogoId:base.id, cat:base.cat, nome:base.nome, qtd:1,
+          valor:r.valor, detalhe:r.detalhe});
+        pinta(); somaTotal();
+      });
+      return;
+    } else {
+      itens.push({id:uid(), catalogoId:base.id, cat:base.cat, nome:base.nome, qtd:1, valor:base.valor||0});
+      if(!$('#t_nicho').value.trim() && ehEnsEv){
+        $('#t_nicho').value = base.nome;
+        $('#t_cat').value = base.cat==='evento' ? 'evento' : 'ensaio';
+      }
     }
+    pinta(); somaTotal();
   };
   $('#t_somar').onclick = ()=>{
     lerLinhas();
@@ -1345,38 +1662,106 @@ function formTrabalho(t, clienteId){
 }
 
 /* ---------- catálogo de serviços ---------- */
-let abaCat = 'ensaio';
+let abaCat = 'ensaio', abaSub = 'todas';
+
+// opções de produto agrupadas por subcategoria (para seletores)
+function optsProdutoPorSub(){
+  const subs = DB.config.subprod || PADRAO.subprod;
+  const prods = (DB.config.catalogo||[]).filter(x=>x.cat==='produto');
+  let html='';
+  Object.entries(subs).forEach(([k,label])=>{
+    const items = prods.filter(p=>(p.sub||'outros')===k);
+    if(!items.length) return;
+    html += `<optgroup label="${esc(label)}">`+items.map(p=>
+      `<option value="${p.id}">${esc(p.nome)}${p.valor?' — R$ '+brl(p.valor):''}</option>`).join('')+`</optgroup>`;
+  });
+  return html;
+}
+// produtos (agrupados) + revelações, para escolher o que vai incluso num pacote
+function optsInclusosPacote(){
+  let html = optsProdutoPorSub();
+  const revs = (DB.config.catalogo||[]).filter(x=>x.cat==='revelacao');
+  if(revs.length) html += `<optgroup label="Revelações">`+revs.map(p=>
+    `<option value="${p.id}">${esc(p.nome)}${p.valor?' — R$ '+brl(p.valor):''}</option>`).join('')+`</optgroup>`;
+  return html;
+}
 
 function vCatalogo(){
   acaoTopo('Novo item', IC.mais, ()=>formItem(), true);
-  const cats = DB.config.categorias;
+  const cats = DB.config.categorias, subs = DB.config.subprod || PADRAO.subprod;
   const todos = DB.config.catalogo||[];
-  const lista = todos.filter(x=>x.cat===abaCat && (!busca || x.nome.toLowerCase().includes(busca)));
+  const f = x => !busca || x.nome.toLowerCase().includes(busca);
+  const lista = todos.filter(x=>x.cat===abaCat && f(x));
 
-  $('#vista').innerHTML = `
-  <div class="card">
-    <div class="chips" style="margin-bottom:18px">${Object.entries(cats).map(([k,n])=>
+  const abas = `<div class="chips" style="margin-bottom:16px">${Object.entries(cats).map(([k,n])=>
       `<button class="chip" data-aba="${k}" aria-pressed="${k===abaCat}">${n}
-        <span style="opacity:.6;margin-left:6px">${todos.filter(x=>x.cat===k).length}</span></button>`).join('')}</div>
-    ${lista.length? `<table class="tabela">
+        <span style="opacity:.6;margin-left:6px">${todos.filter(x=>x.cat===k).length}</span></button>`).join('')}</div>`;
+
+  const tabelaItens = items => `<table class="tabela">
       <thead><tr><th>Item</th><th>Observação</th><th style="text-align:right">Valor</th><th></th></tr></thead>
-      <tbody>${lista.map(x=>`<tr data-id="${x.id}">
+      <tbody>${items.map(x=>`<tr data-id="${x.id}">
         <td><div class="nome">${esc(x.nome)}</div></td>
         <td class="meta">${esc(x.obs||'—')}</td>
         <td style="text-align:right">${x.valor? '<span class="tag g">R$ '+brl(x.valor)+'</span>' : '<span class="tag">sem valor</span>'}</td>
         <td style="text-align:right;width:40px"><span class="meta">editar</span></td>
-      </tr>`).join('')}</tbody></table>`
-    : `<div class="vazio"><div class="t">Nenhum item em ${cats[abaCat]}</div>
-       <div class="d">Cadastre os itens desta categoria com nome e valor. Depois é só selecionar no trabalho.</div></div>`}
-  </div>
-  <div class="card"><h2>Preenchimento rápido</h2>
-    <p class="dica" style="margin:0 0 14px">Informe os valores de vários itens de uma vez. Deixe em branco o que ainda não tem preço.</p>
-    <div class="campos">${todos.filter(x=>x.cat===abaCat).map(x=>
-      `<div><label>${esc(x.nome)}</label><input type="number" step="0.01" data-preco="${x.id}" value="${x.valor||''}" placeholder="0,00"></div>`).join('')}</div>
-    ${todos.filter(x=>x.cat===abaCat).length? '<div class="acoes" style="margin-top:16px"><button class="btn pri" id="salvarPrecos">Salvar valores</button></div>':''}
-  </div>`;
+      </tr>`).join('')}</tbody></table>`;
 
-  document.querySelectorAll('[data-aba]').forEach(b=> b.onclick = ()=>{ abaCat=b.dataset.aba; desenha(); });
+  const tabelaPacotes = items => `<table class="tabela">
+      <thead><tr><th>Item</th><th>Observação</th><th style="text-align:right">Pacotes</th><th></th></tr></thead>
+      <tbody>${items.map(x=>{
+        const np=(x.pacotes||[]).length, precos=(x.pacotes||[]).map(p=>Number(p.valor)||0).filter(v=>v>0);
+        const faixa=precos.length?('R$ '+brl(Math.min(...precos))+(precos.length>1?' – '+brl(Math.max(...precos)):'')):'';
+        return `<tr data-id="${x.id}">
+        <td><div class="nome">${esc(x.nome)}</div>${np?`<div class="meta">${(x.pacotes||[]).map(p=>esc(p.nome||'?')).join(' · ')}${faixa?' · '+faixa:''}</div>`:''}</td>
+        <td class="meta">${esc(x.obs||'—')}</td>
+        <td style="text-align:right">${np? '<span class="tag g">'+np+' pacote'+(np===1?'':'s')+'</span>' : '<span class="tag">sem pacote</span>'}</td>
+        <td style="text-align:right;width:40px"><span class="meta">editar</span></td>
+      </tr>`;}).join('')}</tbody></table>`;
+
+  let corpo='';
+  if(abaCat==='produto'){
+    const subKeys = Object.keys(subs).filter(k=> todos.some(x=>x.cat==='produto' && (x.sub||'outros')===k));
+    const subChips = `<div class="chips" style="margin-bottom:16px">
+      <button class="chip" data-sub="todas" aria-pressed="${abaSub==='todas'}">Todas</button>
+      ${subKeys.map(k=>`<button class="chip" data-sub="${k}" aria-pressed="${abaSub===k}">${esc(subs[k])}
+        <span style="opacity:.6;margin-left:6px">${todos.filter(x=>x.cat==='produto'&&(x.sub||'outros')===k).length}</span></button>`).join('')}</div>`;
+    const mostrar = abaSub==='todas' ? subKeys : [abaSub];
+    const grupos = mostrar.map(k=>{
+      const items = lista.filter(x=>(x.sub||'outros')===k);
+      if(!items.length) return '';
+      return `<div style="margin-top:6px"><div style="padding:6px 2px 8px;color:var(--gold);letter-spacing:.2em;font-size:9px;text-transform:uppercase">${esc(subs[k]||k)}</div>${tabelaItens(items)}</div>`;
+    }).join('');
+    corpo = subChips + (grupos || `<div class="vazio"><div class="t">Nenhum produto aqui</div>
+      <div class="d">Adicione um produto e escolha a subcategoria — Parede, Álbuns e estojos, Mesa e mão, Presente ou Arquivo.</div></div>`);
+  } else if(abaCat==='ensaio' || abaCat==='evento'){
+    corpo = lista.length ? tabelaPacotes(lista)
+      : `<div class="vazio"><div class="t">Nenhum item em ${cats[abaCat]}</div>
+         <div class="d">Crie o item (ex.: Gestante) e cadastre dentro dele os pacotes Essencial, Intermediário e Avançado.</div></div>`;
+  } else {
+    corpo = lista.length ? tabelaItens(lista)
+      : `<div class="vazio"><div class="t">Nenhum item em ${cats[abaCat]}</div>
+         <div class="d">Cadastre os itens desta categoria com nome e valor. Depois é só selecionar no trabalho.</div></div>`;
+  }
+
+  let apoio;
+  if(abaCat==='ensaio' || abaCat==='evento'){
+    apoio = `<div class="card"><h2>Como funciona</h2>
+      <p class="dica" style="margin:0">Em ${cats[abaCat].toLowerCase()}, o preço fica dentro dos <b>pacotes</b> de cada item. Clique num item acima (ou crie um novo) e cadastre os pacotes — por exemplo <b>Essencial</b>, <b>Intermediário</b> e <b>Avançado</b> — cada um com preço, número de imagens e os produtos inclusos. Ao montar o trabalho, você escolhe o item e o pacote, e o contrato é preenchido automaticamente.</p></div>`;
+  } else {
+    const alvo = abaCat==='produto'
+      ? todos.filter(x=>x.cat==='produto' && (abaSub==='todas' || (x.sub||'outros')===abaSub))
+      : todos.filter(x=>x.cat===abaCat);
+    apoio = `<div class="card"><h2>Preenchimento rápido${abaCat==='produto'&&abaSub!=='todas'?' · '+esc(subs[abaSub]):''}</h2>
+      <p class="dica" style="margin:0 0 14px">Informe os valores de vários itens de uma vez. Deixe em branco o que ainda não tem preço.</p>
+      <div class="campos">${alvo.map(x=>
+        `<div><label>${esc(x.nome)}</label><input type="number" step="0.01" data-preco="${x.id}" value="${x.valor||''}" placeholder="0,00"></div>`).join('')}</div>
+      ${alvo.length? '<div class="acoes" style="margin-top:16px"><button class="btn pri" id="salvarPrecos">Salvar valores</button></div>':''}</div>`;
+  }
+
+  $('#vista').innerHTML = `<div class="card">${abas}${corpo}</div>${apoio}`;
+
+  document.querySelectorAll('[data-aba]').forEach(b=> b.onclick = ()=>{ abaCat=b.dataset.aba; abaSub='todas'; desenha(); });
+  document.querySelectorAll('[data-sub]').forEach(b=> b.onclick = ()=>{ abaSub=b.dataset.sub; desenha(); });
   document.querySelectorAll('.tabela tbody tr').forEach(tr=> tr.onclick = ()=>
     formItem((DB.config.catalogo||[]).find(x=>x.id===tr.dataset.id)));
   const sp = $('#salvarPrecos');
@@ -1391,24 +1776,175 @@ function vCatalogo(){
 
 function formItem(x){
   const e = x||{cat:abaCat}, cats = DB.config.categorias;
+  let pacotes = JSON.parse(JSON.stringify(e.pacotes||[]));
+
+  const prodChip = (pk,p,pi)=>`<span class="chip" aria-pressed="true" style="cursor:default">${esc(p.nome)}${p.qtd>1?' ×'+p.qtd:''}<span class="x" data-rmprod="${pk.id}:${pi}" style="cursor:pointer">×</span></span>`;
+
+  const cardPacote = pk => `<div class="card" data-pac="${pk.id}" style="background:var(--bg2);padding:16px;margin-top:12px">
+    <div class="campos" style="grid-template-columns:2fr 1fr 1fr">
+      <div><label>Nome do pacote</label><input data-pn="${pk.id}" value="${esc(pk.nome||'')}" placeholder="Essencial, Intermediário…"></div>
+      <div><label>Preço (R$)</label><input type="number" step="0.01" data-pv="${pk.id}" value="${pk.valor||''}" placeholder="0,00"></div>
+      <div><label>Imagens</label><input type="number" data-pi="${pk.id}" value="${pk.imagens||''}" placeholder="0"></div>
+      <div class="full"><label>O que inclui (texto livre)</label><input data-pd="${pk.id}" value="${esc(pk.descricao||'')}" placeholder="ex.: 1 troca de roupa, making of, galeria online…"></div>
+    </div>
+    <label style="margin-top:12px">Produtos inclusos no pacote</label>
+    <div class="chips" style="margin-bottom:10px">${(pk.produtos||[]).length? pk.produtos.map((p,pi)=>prodChip(pk,p,pi)).join('') : '<span class="meta">Nenhum produto adicionado.</span>'}</div>
+    <div class="campos" style="grid-template-columns:2fr .7fr auto;align-items:end">
+      <div><select data-np="${pk.id}">${optsInclusosPacote()||'<option value="">— cadastre produtos primeiro —</option>'}</select></div>
+      <div><input type="number" min="1" data-nq="${pk.id}" value="1" aria-label="Quantidade"></div>
+      <div><button type="button" class="btn sm" data-addprod="${pk.id}">${IC.mais}<span>Incluir</span></button></div>
+    </div>
+    <div class="acoes" style="margin-top:12px"><button type="button" class="btn sm perigo" data-rmpac="${pk.id}">Remover pacote</button></div>
+  </div>`;
+
   modal(x?'Editar item':'Novo item', `<div class="campos">
     <div><label>Categoria</label><select id="i_cat">${Object.entries(cats).map(([k,n])=>
       `<option value="${k}" ${e.cat===k?'selected':''}>${n}</option>`).join('')}</select></div>
-    <div><label>Valor (R$)</label><input type="number" step="0.01" id="i_valor" value="${e.valor||''}"></div>
-    <div class="full"><label>Nome do item</label><input id="i_nome" value="${esc(e.nome||'')}"></div>
+    <div id="i_subWrap"><label>Subcategoria</label><select id="i_sub">${Object.entries(DB.config.subprod||PADRAO.subprod).map(([k,l])=>
+      `<option value="${k}" ${(e.sub||'outros')===k?'selected':''}>${esc(l)}</option>`).join('')}</select></div>
+    <div><label>Valor avulso (R$)</label><input type="number" step="0.01" id="i_valor" value="${e.valor||''}"></div>
+    <div class="full"><label>Nome do item</label><input id="i_nome" value="${esc(e.nome||'')}" placeholder="Gestante, Newborn, Casamento…"></div>
     <div class="full"><label>Observação</label><input id="i_obs" value="${esc(e.obs||'')}" placeholder="tamanho, acabamento, duração…"></div>
+  </div>
+  <div id="i_especBloco">
+    <h2 style="font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin:22px 0 6px">Especificações</h2>
+    <p class="dica" style="margin:0 0 10px">Cadastre aqui as opções que o cliente escolhe — tamanho, capa, acabamento, tipo de caixa. Cada opção pode ter acréscimo de valor. Na hora de montar o trabalho, você só clica.</p>
+    <div id="i_grupos"></div>
+    <div class="acoes" style="margin-top:10px"><button type="button" class="btn sm" id="i_addGrupo">${IC.mais}<span>Novo grupo de opções</span></button></div>
+    <div class="card" style="background:var(--bg2);padding:16px;margin-top:14px">
+      <label style="margin-bottom:10px">Quantidade variável — lâminas, cópias, fotografias</label>
+      <div class="campos" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+        <div><label>Rótulo interno</label><input id="i_incR" placeholder="Lâminas"></div>
+        <div><label>Como mostrar ao cliente</label><input id="i_incU" placeholder="páginas"></div>
+        <div><label>Multiplicador</label><input type="number" id="i_incF" placeholder="2"></div>
+        <div><label>Mínimo incluso</label><input type="number" id="i_incM" placeholder="10"></div>
+        <div><label>Valor por unidade extra (R$)</label><input type="number" step="0.01" id="i_incV" placeholder="0,00"></div>
+      </div>
+      <p class="dica" style="margin-top:8px">Exemplo do álbum: rótulo <b>Lâminas</b>, mostrado como <b>páginas</b>, multiplicador <b>2</b>, mínimo <b>10</b>. O valor avulso cobre as 10 lâminas; cada lâmina além disso soma o valor extra. Deixe o rótulo em branco para desativar.</p>
+    </div>
+  </div>
+
+  <div id="i_pacotesBloco">
+    <h2 style="font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin:22px 0 6px">Pacotes deste item</h2>
+    <p class="dica" style="margin:0 0 4px">Crie quantos pacotes quiser (ex.: Essencial, Intermediário, Avançado), cada um com seu preço, número de imagens e os produtos que já vêm inclusos. Ao montar o trabalho, basta escolher o pacote — o contrato preenche tudo sozinho. O <b>valor avulso</b> acima serve só quando o item é vendido fora de pacote.</p>
+    <div id="i_pacotes"></div>
+    <div class="acoes" style="margin-top:12px">
+      <button type="button" class="btn sm" id="i_addPac">${IC.mais}<span>Adicionar pacote</span></button>
+      <button type="button" class="btn sm" id="i_modeloPac">Usar modelo: Essencial · Intermediário · Avançado</button>
+    </div>
   </div>`, [
     ...(x?[{txt:'Excluir', perigo:true, acao:()=>{ fecharModal(); confirmar('Excluir este item do catálogo?', ()=>{
       DB.config.catalogo = DB.config.catalogo.filter(y=>y.id!==x.id); store.salvar(); desenha(); toast('Item excluído'); }); }}]:[]),
     {txt:'Cancelar', acao:fecharModal},
     {txt:'Salvar', pri:true, acao:()=>{
+      lerPacotes();
       const nome = $('#i_nome').value.trim();
       if(!nome) return toast('Informe o nome do item','erro');
-      const dados = {cat:$('#i_cat').value, nome, valor:Number($('#i_valor').value)||0, obs:$('#i_obs').value.trim()};
+      const cat = $('#i_cat').value;
+      const dados = {cat, nome, valor:Number($('#i_valor').value)||0, obs:$('#i_obs').value.trim(),
+        pacotes: ['ensaio','evento'].includes(cat) ? pacotes.filter(p=>(p.nome||'').trim()) : []};
+      if(cat==='produto') dados.sub = $('#i_sub').value;
+      dados.espec = lerEspec();
       if(x) Object.assign(x,dados); else DB.config.catalogo.push(Object.assign({id:uid()},dados));
       store.salvar(); fecharModal(); desenha(); toast('Item salvo','ok');
     }}
   ]);
+
+  let grupos = JSON.parse(JSON.stringify((e.espec&&e.espec.grupos)||[]));
+  const inc0 = (e.espec&&e.espec.incremento)||{};
+
+  function cardGrupo(g){
+    return `<div class="card" data-g="${g.id}" style="background:var(--bg2);padding:14px;margin-top:10px">
+      <div class="campos" style="grid-template-columns:1fr auto;align-items:end">
+        <div><label>Nome do grupo</label><input data-gn="${g.id}" value="${esc(g.nome||'')}" placeholder="Tamanho, Capa, Acabamento…"></div>
+        <div><button type="button" class="btn sm perigo" data-rmg="${g.id}">Remover</button></div>
+      </div>
+      <label style="margin-top:12px">Opções</label>
+      ${(g.opcoes||[]).map((o,k)=>`<div class="campos" style="grid-template-columns:1fr 130px auto;align-items:end;margin-bottom:7px">
+        <div><input data-on="${g.id}:${k}" value="${esc(o.n||'')}" placeholder="20×20 cm"></div>
+        <div><input type="number" step="0.01" data-ov="${g.id}:${k}" value="${o.v||''}" placeholder="acréscimo"></div>
+        <div><button type="button" class="btn sm perigo" data-rmo="${g.id}:${k}">×</button></div>
+      </div>`).join('')}
+      <button type="button" class="btn sm" data-addo="${g.id}" style="margin-top:4px">${IC.mais}<span>Nova opção</span></button>
+    </div>`;
+  }
+  function lerGrupos(){
+    grupos.forEach(g=>{
+      const n = document.querySelector(`[data-gn="${g.id}"]`); if(n) g.nome = n.value.trim();
+      (g.opcoes||[]).forEach((o,k)=>{
+        const a = document.querySelector(`[data-on="${g.id}:${k}"]`), b = document.querySelector(`[data-ov="${g.id}:${k}"]`);
+        if(a) o.n = a.value.trim(); if(b) o.v = Number(b.value)||0;
+      });
+    });
+  }
+  function pintaGrupos(){
+    const box = $('#i_grupos'); if(!box) return;
+    box.innerHTML = grupos.length ? grupos.map(cardGrupo).join('')
+      : '<div class="meta" style="padding:4px 0">Nenhum grupo ainda. Use o botão abaixo para criar — por exemplo, Tamanho ou Capa.</div>';
+    document.querySelectorAll('[data-rmg]').forEach(b=> b.onclick = ()=>{ lerGrupos(); grupos = grupos.filter(g=>g.id!==b.dataset.rmg); pintaGrupos(); });
+    document.querySelectorAll('[data-addo]').forEach(b=> b.onclick = ()=>{ lerGrupos();
+      const g = grupos.find(x=>x.id===b.dataset.addo); g.opcoes = g.opcoes||[]; g.opcoes.push({n:'',v:0}); pintaGrupos(); });
+    document.querySelectorAll('[data-rmo]').forEach(b=> b.onclick = ()=>{ lerGrupos();
+      const [gid,k] = b.dataset.rmo.split(':'); const g = grupos.find(x=>x.id===gid);
+      g.opcoes.splice(Number(k),1); pintaGrupos(); });
+  }
+  function lerEspec(){
+    lerGrupos();
+    const r = $('#i_incR') ? $('#i_incR').value.trim() : '';
+    const gs = grupos.filter(g=>(g.nome||'').trim() && (g.opcoes||[]).some(o=>(o.n||'').trim()))
+      .map(g=>({id:g.id, nome:g.nome.trim(), opcoes:g.opcoes.filter(o=>(o.n||'').trim())}));
+    const inc = r ? {rotulo:r, unidadeCliente:($('#i_incU').value.trim()||r.toLowerCase()),
+      fator:Number($('#i_incF').value)||1, minimo:Number($('#i_incM').value)||1,
+      valor:Number($('#i_incV').value)||0} : null;
+    return (gs.length || inc) ? {grupos:gs, incremento:inc} : null;
+  }
+
+  function pinta(){
+    $('#i_pacotes').innerHTML = pacotes.length ? pacotes.map(cardPacote).join('')
+      : '<div class="meta" style="padding:6px 0">Nenhum pacote ainda. Para itens vendidos como pacote (ensaios e eventos), adicione ao menos um.</div>';
+    document.querySelectorAll('[data-rmpac]').forEach(b=> b.onclick = ()=>{ lerPacotes(); pacotes = pacotes.filter(p=>p.id!==b.dataset.rmpac); pinta(); });
+    document.querySelectorAll('[data-addprod]').forEach(b=> b.onclick = ()=>{
+      lerPacotes();
+      const pk = pacotes.find(p=>p.id===b.dataset.addprod); if(!pk) return;
+      const sel = document.querySelector(`[data-np="${pk.id}"]`);
+      const base = (DB.config.catalogo||[]).find(y=>y.id===(sel&&sel.value));
+      if(!base) return toast('Escolha um produto','erro');
+      const qtd = Number(document.querySelector(`[data-nq="${pk.id}"]`).value)||1;
+      (pk.produtos = pk.produtos||[]).push({nome:base.nome, qtd, catalogoId:base.id});
+      pinta();
+    });
+    document.querySelectorAll('[data-rmprod]').forEach(b=> b.onclick = ()=>{
+      lerPacotes();
+      const [pid,idx] = b.dataset.rmprod.split(':');
+      const pk = pacotes.find(p=>p.id===pid); if(pk && pk.produtos) pk.produtos.splice(Number(idx),1);
+      pinta();
+    });
+  }
+  function lerPacotes(){
+    pacotes.forEach(pk=>{
+      const g = attr => { const el = document.querySelector(`[${attr}="${pk.id}"]`); return el ? el.value : undefined; };
+      const n=g('data-pn'); if(n!==undefined) pk.nome=n.trim();
+      const v=g('data-pv'); if(v!==undefined) pk.valor=Number(v)||0;
+      const i=g('data-pi'); if(i!==undefined) pk.imagens=Number(i)||0;
+      const d=g('data-pd'); if(d!==undefined) pk.descricao=d.trim();
+    });
+  }
+  function toggleBloco(){
+    const cat = $('#i_cat').value;
+    $('#i_pacotesBloco').style.display = ['ensaio','evento'].includes(cat) ? '' : 'none';
+    $('#i_subWrap').style.display = cat==='produto' ? '' : 'none';
+  }
+  $('#i_cat').onchange = toggleBloco;
+  pintaGrupos();
+  if($('#i_addGrupo')) $('#i_addGrupo').onclick = ()=>{ lerGrupos(); grupos.push({id:uid(),nome:'',opcoes:[{n:'',v:0}]}); pintaGrupos(); };
+  if($('#i_incR')){
+    $('#i_incR').value = inc0.rotulo||''; $('#i_incU').value = inc0.unidadeCliente||'';
+    $('#i_incF').value = inc0.fator||''; $('#i_incM').value = inc0.minimo||''; $('#i_incV').value = inc0.valor||'';
+  }
+  $('#i_addPac').onclick = ()=>{ lerPacotes(); pacotes.push({id:uid(), nome:'', valor:0, imagens:0, descricao:'', produtos:[]}); pinta(); };
+  $('#i_modeloPac').onclick = ()=>{ lerPacotes(); ['Essencial','Intermediário','Avançado'].forEach(n=>
+    pacotes.push({id:uid(), nome:n, valor:0, imagens:0, descricao:'', produtos:[]})); pinta(); };
+  toggleBloco(); pinta();
 }
 
 /* ---------- emitir ---------- */
@@ -1472,6 +2008,14 @@ function vEmitir(){
     : `<div class="meta">Sem trabalho vinculado — os campos de plano, data e valores sairão em branco no documento, para preenchimento à mão.</div>`}
   </div>
 
+  <div class="card"><h2>Data do documento</h2>
+    <div class="campos" style="grid-template-columns:200px auto;align-items:end">
+      <div><label>Data que sai no documento</label><input type="date" id="e_data" value="${DATA_DOC}"></div>
+      <div><button class="btn sm" id="e_hoje">Hoje</button></div>
+    </div>
+    <div class="dica">Por padrão sai a data de hoje. Altere quando precisar emitir com data anterior ou futura — vale para o cabeçalho, para as assinaturas e para o corpo do documento.</div>
+  </div>
+
   <div class="card"><h2>Documento</h2>
     <div class="docgrid">${Object.entries(MOD).map(([k,m])=>
       `<button class="doccard" data-tipo="${k}"><span class="t">${m.nome}</span><span class="d">${m.desc}</span>
@@ -1494,6 +2038,10 @@ function vEmitir(){
       const inp = $('#y_'+campo); if(!inp) return;
       inp.onblur = ()=>{ tra[campo] = inp.value.trim(); store.salvar(); };
     });
+  }
+  if($('#e_data')){
+    $('#e_data').onchange = e => { DATA_DOC = e.target.value || hojeISO(); toast('Data do documento: '+dataDoc()); };
+    $('#e_hoje').onclick = ()=>{ DATA_DOC = hojeISO(); $('#e_data').value = DATA_DOC; toast('Data de hoje aplicada','ok'); };
   }
   document.querySelectorAll('.doccard').forEach(b=> b.onclick = ()=>{
     Object.entries(mapaCli).forEach(([campo,chave])=>{ const inp=$('#x_'+campo); if(inp) cli[chave]=inp.value.trim(); });
@@ -1521,7 +2069,7 @@ function vHistorico(){
       <td><div class="nome">${MOD[d.tipo]?MOD[d.tipo].nome:d.tipo}</div></td>
       <td class="meta">${esc(d.nomeCliente)}</td>
       <td class="meta">${new Date(d.quando).toLocaleString('pt-BR')}</td>
-      <td style="text-align:right"><span class="tag">reemitir</span></td>
+      <td style="text-align:right">${d.assinatura?`<span class="tag ok">${esc(d.assinatura)}</span> `:''}<span class="tag">reemitir</span></td>
     </tr>`).join('')}</tbody></table></div>`;
   document.querySelectorAll('.tabela tbody tr').forEach(tr=> tr.onclick = ()=>{
     const d = DB.docs.find(x=>x.id===tr.dataset.id);
@@ -1550,23 +2098,254 @@ function vModelos(){
   document.querySelectorAll('[data-mod]').forEach(b=> b.onclick = ()=> editarModelo(b.dataset.mod));
 }
 
+/* ---------- editor visual de modelos ---------- */
+const TIPOS = {
+  titulo:{n:'Título principal', ic:'H'}, subtitulo:{n:'Linha de apoio', ic:'—'},
+  secao:{n:'Título de seção', ic:'§'}, subsecao:{n:'Subtítulo', ic:'h'},
+  paragrafo:{n:'Parágrafo', ic:'¶'}, par:{n:'Parágrafo destacado', ic:'|'},
+  dados:{n:'Bloco de dados', ic:'▤'}, tabela:{n:'Tabela', ic:'▦'},
+  lista:{n:'Lista', ic:'•'}, opcao:{n:'Caixa de marcar', ic:'☐'},
+  destaque:{n:'Destaque', ic:'★'}, nota:{n:'Observação', ic:'!'},
+  assina:{n:'Assinaturas', ic:'✎'}, quebra:{n:'Quebra de página', ic:'⤓'},
+  html:{n:'Bloco avançado', ic:'<>'}
+};
+
+function htmlParaBlocos(html){
+  const doc = new DOMParser().parseFromString('<div id=raiz>'+html+'</div>','text/html');
+  const raiz = doc.getElementById('raiz');
+  const bs = [];
+  [...raiz.children].forEach(n=>{
+    const t = n.tagName.toLowerCase(), cl = n.className||'';
+    const txt = n.innerHTML.trim();
+    if(t==='h1') bs.push({id:uid(),tipo:'titulo',texto:txt});
+    else if(t==='p' && cl.includes('sub')) bs.push({id:uid(),tipo:'subtitulo',texto:txt});
+    else if(t==='h2') bs.push({id:uid(),tipo:'secao',texto:txt});
+    else if(t==='h3') bs.push({id:uid(),tipo:'subsecao',texto:txt});
+    else if(t==='p') bs.push({id:uid(),tipo:'paragrafo',texto:txt});
+    else if(t==='span' && cl.includes('par')) bs.push({id:uid(),tipo:'par',texto:txt});
+    else if(t==='ul') bs.push({id:uid(),tipo:'lista',itens:[...n.querySelectorAll('li')].map(li=>li.innerHTML.trim())});
+    else if(t==='table'){
+      const linhas = [...n.querySelectorAll('tr')].map(tr=>[...tr.children].map(c=>c.innerHTML.trim()));
+      const temTh = n.querySelector('th');
+      bs.push({id:uid(),tipo:'tabela',cab:temTh?linhas[0]:[],linhas:temTh?linhas.slice(1):linhas});
+    }
+    else if(t==='div' && cl.includes('bloco')){
+      bs.push({id:uid(),tipo:'dados',linhas:[...n.querySelectorAll('.lin')].map(l=>({
+        r:(l.querySelector('.r')||{}).innerHTML||'', v:(l.querySelector('.v')||{}).innerHTML||''}))});
+    }
+    else if(t==='div' && cl.includes('dupla')){
+      [...n.children].forEach(c=>{
+        bs.push({id:uid(),tipo:'dados',lado:true,linhas:[...c.querySelectorAll('.lin')].map(l=>({
+          r:(l.querySelector('.r')||{}).innerHTML||'', v:(l.querySelector('.v')||{}).innerHTML||''}))});
+      });
+    }
+    else if(t==='div' && cl.includes('destaque')) bs.push({id:uid(),tipo:'destaque',texto:txt});
+    else if(t==='div' && cl.includes('nota')) bs.push({id:uid(),tipo:'nota',texto:txt});
+    else if(t==='div' && cl.includes('opt')) bs.push({id:uid(),tipo:'opcao',texto:(n.querySelector('span:last-child')||n).innerHTML.trim()});
+    else if(t==='div' && cl.includes('assina')){
+      const cs = [...n.querySelectorAll('.c')].map(c=>{
+        const b = c.querySelector('b'); const rot = b?b.innerHTML.trim():'';
+        const cl2 = c.cloneNode(true); const b2 = cl2.querySelector('b'); if(b2) b2.remove();
+        return {rot, txt:cl2.innerHTML.trim()};
+      });
+      bs.push({id:uid(),tipo:'assina',campos:cs});
+    }
+    else if(t==='div' && (n.getAttribute('style')||'').includes('page-break')) bs.push({id:uid(),tipo:'quebra'});
+    else bs.push({id:uid(),tipo:'html',texto:n.outerHTML});
+  });
+  return bs;
+}
+
+function blocosParaHTML(bs){
+  const out = [];
+  for(let i=0;i<bs.length;i++){
+    const b = bs[i];
+    switch(b.tipo){
+      case 'titulo': out.push(`<h1>${b.texto||''}</h1>`); break;
+      case 'subtitulo': out.push(`<p class="sub">${b.texto||''}</p>`); break;
+      case 'secao': out.push(`<h2>${b.texto||''}</h2>`); break;
+      case 'subsecao': out.push(`<h3>${b.texto||''}</h3>`); break;
+      case 'paragrafo': out.push(`<p>${b.texto||''}</p>`); break;
+      case 'par': out.push(`<span class="par">${b.texto||''}</span>`); break;
+      case 'lista': out.push('<ul>'+(b.itens||[]).map(x=>`<li>${x}</li>`).join('')+'</ul>'); break;
+      case 'destaque': out.push(`<div class="destaque">${b.texto||''}</div>`); break;
+      case 'nota': out.push(`<div class="nota">${b.texto||''}</div>`); break;
+      case 'opcao': out.push(`<div class="opt"><span class="bx"></span><span>${b.texto||''}</span></div>`); break;
+      case 'quebra': out.push('<div style="page-break-before:always"></div>'); break;
+      case 'html': out.push(b.texto||''); break;
+      case 'tabela': {
+        const cab = (b.cab||[]).length? '<tr>'+b.cab.map(c=>`<th>${c}</th>`).join('')+'</tr>' : '';
+        out.push('<table>'+cab+(b.linhas||[]).map(l=>'<tr>'+l.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</table>');
+        break; }
+      case 'dados': {
+        const corpo = `<div class="bloco">`+(b.linhas||[]).map(l=>
+          `<div class="lin"><span class="r">${l.r||''}</span><span class="v">${l.v||''}</span></div>`).join('')+`</div>`;
+        if(b.lado && bs[i+1] && bs[i+1].tipo==='dados' && bs[i+1].lado){
+          const n2 = bs[i+1];
+          const corpo2 = `<div class="bloco">`+(n2.linhas||[]).map(l=>
+            `<div class="lin"><span class="r">${l.r||''}</span><span class="v">${l.v||''}</span></div>`).join('')+`</div>`;
+          out.push(`<div class="dupla">${corpo}${corpo2}</div>`); i++;
+        } else out.push(corpo);
+        break; }
+      case 'assina':
+        out.push('<div class="assina">'+(b.campos||[]).map(c=>
+          `<div class="c"><b>${c.rot||''}</b>${c.txt||''}</div>`).join('')+'</div>');
+        break;
+    }
+  }
+  return out.join('\n');
+}
+
 function editarModelo(k){
-  const atual = (DB.modelos[k] && DB.modelos[k].tpl) || MOD[k].tpl;
+  const salvo = DB.modelos[k];
+  let blocos = salvo && salvo.blocos ? JSON.parse(JSON.stringify(salvo.blocos))
+             : htmlParaBlocos((salvo && salvo.tpl) || MOD[k].tpl);
+  let modoCodigo = false;
+
+  const campoTexto = (b, campo, rotulo, alto) => alto
+    ? `<textarea data-b="${b.id}" data-f="${campo}" style="min-height:74px">${esc(b[campo]||'')}</textarea>`
+    : `<input data-b="${b.id}" data-f="${campo}" value="${esc(b[campo]||'')}" placeholder="${rotulo||''}">`;
+
+  function cardBloco(b, i){
+    let corpo = '';
+    if(['titulo','subtitulo','secao','subsecao'].includes(b.tipo)) corpo = campoTexto(b,'texto','Texto');
+    else if(['paragrafo','par','destaque','nota','opcao'].includes(b.tipo)) corpo = campoTexto(b,'texto','Texto',true);
+    else if(b.tipo==='html') corpo = `<textarea data-b="${b.id}" data-f="texto" style="min-height:90px;font-family:ui-monospace,monospace;font-size:11.5px">${esc(b.texto||'')}</textarea>`;
+    else if(b.tipo==='lista') corpo = `<textarea data-b="${b.id}" data-f="_itens" style="min-height:80px" placeholder="Um item por linha">${esc((b.itens||[]).join('\n'))}</textarea>`;
+    else if(b.tipo==='quebra') corpo = '<div class="meta">O documento continua na página seguinte.</div>';
+    else if(b.tipo==='dados') corpo = (b.linhas||[]).map((l,j)=>
+        `<div class="campos" style="grid-template-columns:1fr 1fr auto;align-items:end;margin-bottom:6px">
+          <div><input data-b="${b.id}" data-f="l:${j}:r" value="${esc(l.r||'')}" placeholder="Rótulo"></div>
+          <div><input data-b="${b.id}" data-f="l:${j}:v" value="${esc(l.v||'')}" placeholder="Valor ou {{campo}}"></div>
+          <div><button type="button" class="btn sm perigo" data-rml="${b.id}:${j}">×</button></div></div>`).join('')
+      + `<button type="button" class="btn sm" data-addl="${b.id}">${IC.mais}<span>Nova linha</span></button>`
+      + `<div class="dica" style="margin-top:6px">Marque “lado a lado” para dois blocos ficarem em colunas.
+         <label style="display:inline-flex;gap:6px;align-items:center;margin-left:8px;text-transform:none;letter-spacing:0;font-size:12px;color:var(--txt2)">
+         <input type="checkbox" data-b="${b.id}" data-f="lado" ${b.lado?'checked':''} style="width:16px;height:16px"> lado a lado</label></div>`;
+    else if(b.tipo==='tabela') corpo =
+        `<label>Cabeçalho — separe por ponto e vírgula</label>
+         <input data-b="${b.id}" data-f="_cab" value="${esc((b.cab||[]).join('; '))}" placeholder="Etapa; Prazo">
+         <label style="margin-top:10px">Linhas — uma por linha, colunas separadas por ponto e vírgula</label>
+         <textarea data-b="${b.id}" data-f="_linhas" style="min-height:86px">${esc((b.linhas||[]).map(l=>l.join('; ')).join('\n'))}</textarea>`;
+    else if(b.tipo==='assina') corpo = (b.campos||[]).map((c,j)=>
+        `<div class="campos" style="grid-template-columns:1fr 1fr;margin-bottom:6px">
+          <div><input data-b="${b.id}" data-f="c:${j}:rot" value="${esc(c.rot||'')}" placeholder="CONTRATANTE"></div>
+          <div><input data-b="${b.id}" data-f="c:${j}:txt" value="${esc(c.txt||'')}" placeholder="{{nome}}"></div></div>`).join('');
+
+    return `<div class="card" data-bloco="${b.id}" style="background:var(--bg2);padding:14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${corpo?'10px':'0'}">
+        <span class="tag g" style="font-family:var(--serif);font-size:13px;padding:2px 8px">${TIPOS[b.tipo].ic}</span>
+        <span style="font-size:13px;flex:1">${TIPOS[b.tipo].n}</span>
+        <button type="button" class="btn sm" data-sobe="${b.id}" ${i===0?'disabled':''}>↑</button>
+        <button type="button" class="btn sm" data-desce="${b.id}" ${i===blocos.length-1?'disabled':''}>↓</button>
+        <button type="button" class="btn sm perigo" data-rmb="${b.id}">×</button>
+      </div>${corpo}</div>`;
+  }
+
+  function ler(){
+    document.querySelectorAll('[data-b]').forEach(el=>{
+      const b = blocos.find(x=>x.id===el.dataset.b); if(!b) return;
+      const f = el.dataset.f, val = el.type==='checkbox' ? el.checked : el.value;
+      if(f==='_itens') b.itens = String(val).split('\n').map(x=>x.trim()).filter(Boolean);
+      else if(f==='_cab') b.cab = String(val).split(';').map(x=>x.trim()).filter(Boolean);
+      else if(f==='_linhas') b.linhas = String(val).split('\n').filter(x=>x.trim()).map(l=>l.split(';').map(c=>c.trim()));
+      else if(f.startsWith('l:')){ const [,j,c] = f.split(':'); b.linhas[j][c] = val; }
+      else if(f.startsWith('c:')){ const [,j,c] = f.split(':'); b.campos[j][c] = val; }
+      else b[f] = val;
+    });
+  }
+
+  function pinta(){
+    const box = $('#mv_blocos'); if(!box) return;
+    box.innerHTML = blocos.map(cardBloco).join('');
+    document.querySelectorAll('[data-rmb]').forEach(x=> x.onclick = ()=>{ ler(); blocos = blocos.filter(b=>b.id!==x.dataset.rmb); pinta(); });
+    document.querySelectorAll('[data-sobe]').forEach(x=> x.onclick = ()=>{ ler();
+      const i = blocos.findIndex(b=>b.id===x.dataset.sobe); if(i>0){ [blocos[i-1],blocos[i]]=[blocos[i],blocos[i-1]]; } pinta(); });
+    document.querySelectorAll('[data-desce]').forEach(x=> x.onclick = ()=>{ ler();
+      const i = blocos.findIndex(b=>b.id===x.dataset.desce); if(i<blocos.length-1){ [blocos[i+1],blocos[i]]=[blocos[i],blocos[i+1]]; } pinta(); });
+    document.querySelectorAll('[data-addl]').forEach(x=> x.onclick = ()=>{ ler();
+      const b = blocos.find(y=>y.id===x.dataset.addl); b.linhas = b.linhas||[]; b.linhas.push({r:'',v:''}); pinta(); });
+    document.querySelectorAll('[data-rml]').forEach(x=> x.onclick = ()=>{ ler();
+      const [id,j] = x.dataset.rml.split(':'); const b = blocos.find(y=>y.id===id); b.linhas.splice(Number(j),1); pinta(); });
+    document.querySelectorAll('#mv_blocos input,#mv_blocos textarea').forEach(el=>{
+      el.addEventListener('focus', ()=> ULTIMO = el);
+    });
+  }
+
+  let ULTIMO = null;
+
   modal('Editar · '+MOD[k].nome, `
-    <label>Campos disponíveis — clique para copiar</label>
-    <div class="chips" id="vars" style="margin-bottom:16px">${CAMPOS.map(c=>`<span class="var" data-c="${c}">{{${c}}}</span>`).join('')}</div>
-    <label>Texto do documento (aceita HTML)</label>
-    <textarea id="mod_tpl" style="min-height:340px;font-family:ui-monospace,Menlo,monospace;font-size:12px">${esc(atual)}</textarea>
-    <div class="dica">Blocos condicionais: <span class="var">{{#ensaio}}…{{/ensaio}}</span> e <span class="var">{{#evento}}…{{/evento}}</span> aparecem só na categoria correspondente.</div>`, [
-    {txt:'Restaurar este', acao:()=>{ delete DB.modelos[k]; store.salvar(); fecharModal(); desenha(); toast('Modelo restaurado','ok'); }},
+    <div class="acoes" style="margin-bottom:12px">
+      <button type="button" class="btn sm" id="mv_add">${IC.mais}<span>Adicionar bloco</span></button>
+      <button type="button" class="btn sm" id="mv_prev">Pré-visualizar</button>
+      <button type="button" class="btn sm" id="mv_cod">Ver código</button>
+    </div>
+    <label>Campos automáticos — clique para inserir onde o cursor estiver</label>
+    <div class="chips" id="mv_vars" style="margin-bottom:14px">${CAMPOS.map(c=>`<span class="var" data-c="${c}">{{${c}}}</span>`).join('')}</div>
+    <div id="mv_blocos"></div>
+    <div id="mv_codigo" style="display:none">
+      <label>HTML do modelo</label>
+      <textarea id="mv_tpl" style="min-height:300px;font-family:ui-monospace,monospace;font-size:11.5px"></textarea>
+    </div>`, [
+    {txt:'Restaurar original', acao:()=>{ delete DB.modelos[k]; store.salvar(); fecharModal(); desenha(); toast('Modelo restaurado','ok'); }},
     {txt:'Cancelar', acao:fecharModal},
     {txt:'Salvar', pri:true, acao:()=>{
-      DB.modelos[k] = {tpl:$('#mod_tpl').value}; store.salvar(); fecharModal(); desenha(); toast('Modelo salvo','ok'); }}
+      if(modoCodigo){ DB.modelos[k] = {tpl:$('#mv_tpl').value}; }
+      else { ler(); DB.modelos[k] = {blocos, tpl:blocosParaHTML(blocos)}; }
+      store.salvar(); fecharModal(); desenha(); toast('Modelo salvo','ok'); }}
   ]);
-  document.querySelectorAll('#vars .var').forEach(v=> v.onclick = ()=>{
-    const ta = $('#mod_tpl'), p = ta.selectionStart, txt = `{{${v.dataset.c}}}`;
-    ta.value = ta.value.slice(0,p)+txt+ta.value.slice(ta.selectionEnd);
-    ta.focus(); ta.selectionStart = ta.selectionEnd = p+txt.length;
+
+  pinta();
+
+  $('#mv_add').onclick = ()=>{
+    ler();
+    const menu = Object.entries(TIPOS).filter(([t])=>t!=='html').map(([t,d])=>
+      `<button type="button" class="btn" data-novo="${t}" style="justify-content:flex-start">
+        <span class="tag g" style="font-family:var(--serif);padding:2px 8px">${d.ic}</span><span>${d.n}</span></button>`).join('');
+    const antes = $('#mCorpo').innerHTML;
+    modal('Adicionar bloco', `<div class="docgrid">${menu}</div>`, [{txt:'Voltar', acao:()=>{ editarModelo(k); }}]);
+    document.querySelectorAll('[data-novo]').forEach(b=> b.onclick = ()=>{
+      const t = b.dataset.novo;
+      const novoB = {id:uid(), tipo:t};
+      if(t==='dados') novoB.linhas = [{r:'',v:''}];
+      if(t==='tabela'){ novoB.cab = ['Coluna 1','Coluna 2']; novoB.linhas = [['','']]; }
+      if(t==='lista') novoB.itens = [''];
+      if(t==='assina') novoB.campos = [{rot:'CONTRATANTE',txt:'{{nome}}'},{rot:'CONTRATADA',txt:'{{empresa}}'}];
+      blocos.push(novoB);
+      DB._rascunho = blocos; editarModelo(k);
+    });
+  };
+
+  if(DB._rascunho){ blocos = DB._rascunho; delete DB._rascunho; pinta(); }
+
+  $('#mv_cod').onclick = ()=>{
+    modoCodigo = !modoCodigo;
+    if(modoCodigo){ ler(); $('#mv_tpl').value = blocosParaHTML(blocos); }
+    else { blocos = htmlParaBlocos($('#mv_tpl').value); pinta(); }
+    $('#mv_blocos').style.display = modoCodigo?'none':'';
+    $('#mv_codigo').style.display = modoCodigo?'':'none';
+    $('#mv_vars').style.display = modoCodigo?'':'';
+    $('#mv_cod').textContent = modoCodigo?'Voltar aos blocos':'Ver código';
+  };
+
+  $('#mv_prev').onclick = ()=>{
+    ler();
+    const cli = DB.clientes[0] || {nome:'Nome do cliente', cpf:'000.000.000-00'};
+    const tra = DB.trabalhos.find(t=>t.clienteId===cli.id);
+    const d = dados(cli, tra, '0000');
+    const html = render(modoCodigo ? $('#mv_tpl').value : blocosParaHTML(blocos), d);
+    const w = window.open('','_blank');
+    if(!w) return toast('Libere os pop-ups','erro');
+    w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pré-visualização</title>${CSSDOC}</head><body><div class="pg">${html}</div></body></html>`);
+    w.document.close();
+  };
+
+  document.querySelectorAll('#mv_vars .var').forEach(v=> v.onclick = ()=>{
+    const alvo = ULTIMO || $('#mv_tpl');
+    if(!alvo) return toast('Clique antes no campo onde quer inserir');
+    const txt = `{{${v.dataset.c}}}`, pos = alvo.selectionStart ?? alvo.value.length;
+    alvo.value = alvo.value.slice(0,pos)+txt+alvo.value.slice(alvo.selectionEnd ?? pos);
+    alvo.focus(); alvo.selectionStart = alvo.selectionEnd = pos+txt.length;
   });
 }
 
@@ -1613,6 +2392,13 @@ function vAjustes(){
     <div class="acoes"><button class="btn" id="a_irCat">Abrir Serviços</button>
       <button class="btn" id="a_restCat">Restaurar catálogo padrão</button></div>
   </div>
+
+  <div class="card"><h2>Assinatura online</h2><div class="campos">
+    <div><label>Serviço utilizado</label><input id="a_asServ" value="${esc((c.assinatura||{}).servico||'')}" placeholder="ZapSign, Autentique, Clicksign…"></div>
+    <div><label>Endereço do serviço</label><input id="a_asUrl" value="${esc((c.assinatura||{}).url||'')}" placeholder="https://app.zapsign.com.br"></div>
+    <div class="full"><label>Mensagem padrão de envio</label><textarea id="a_asMsg" placeholder="Use {{nome}}, {{documento}} e {{link}}">${esc((c.assinatura||{}).mensagem||'')}</textarea></div>
+  </div>
+  <div class="dica">O aplicativo prepara o documento e a mensagem. A assinatura com registro de data, hora e IP é feita pelo serviço escolhido — todos têm plano gratuito para poucos documentos por mês.</div></div>
 
   <div class="card"><h2>Backup</h2>
     <p class="dica" style="margin:0 0 14px">Os dados ficam apenas neste navegador. Exporte um backup com frequência e guarde em outro lugar.</p>
