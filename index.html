@@ -2,8 +2,18 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Lumiar · Central de Documentos</title>
+<meta name="description" content="Central de documentos do Lumiar Retratos Studio.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#100F0E" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lumiar Docs">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icone-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,7 +50,8 @@ button,input,select,textarea{font-family:inherit;font-size:14px;color:inherit}
 ::-webkit-scrollbar-thumb{background:var(--linha2);border-radius:9px}
 ::-webkit-scrollbar-track{background:transparent}
 
-.app{display:grid;grid-template-columns:var(--rail) 1fr;height:100vh}
+.app{display:grid;grid-template-columns:var(--rail) 1fr;height:100vh;height:100dvh;
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 
 /* ---------- barra lateral ---------- */
 .rail{background:var(--bg2);border-right:1px solid var(--linha);display:flex;flex-direction:column;min-height:0}
@@ -280,6 +291,8 @@ input[type=file]{position:absolute;width:1px;height:1px;opacity:0;clip:rect(0 0 
       <div class="busca" id="cxBusca"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input id="busca" placeholder="Buscar…" autocomplete="off"></div>
       <div class="sp"></div>
+      <button class="tema" id="btnInstalar" title="Instalar aplicativo" style="display:none">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg><span>Instalar</span></button>
       <button class="tema" id="btnTema" title="Alternar tema"></button>
       <div class="acoes" id="acoesTopo"></div>
     </div>
@@ -2479,6 +2492,37 @@ $('#arqBkp').onchange = e => {
 };
 
 /* ══════════════ INÍCIO ══════════════ */
+/* ══════════════ APLICATIVO INSTALÁVEL ══════════════ */
+if('serviceWorker' in navigator){
+  addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+let promptInstalar = null;
+addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); promptInstalar = e;
+  const b = $('#btnInstalar'); if(b) b.style.display = '';
+});
+addEventListener('appinstalled', ()=>{
+  promptInstalar = null;
+  const b = $('#btnInstalar'); if(b) b.style.display = 'none';
+  toast('Aplicativo instalado','ok');
+});
+$('#btnInstalar').onclick = async ()=>{
+  if(promptInstalar){ promptInstalar.prompt(); await promptInstalar.userChoice; promptInstalar = null; $('#btnInstalar').style.display='none'; return; }
+  modal('Instalar na tela inicial', `
+    <div class="hist"><div class="ic">A</div><div><div class="t">Android · Chrome</div>
+      <div class="m">Toque nos três pontinhos e escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.</div></div></div>
+    <div class="hist"><div class="ic">i</div><div><div class="t">iPhone · Safari</div>
+      <div class="m">Toque no ícone de compartilhar e escolha “Adicionar à Tela de Início”.</div></div></div>
+    <div class="hist"><div class="ic">C</div><div><div class="t">Computador · Chrome ou Edge</div>
+      <div class="m">Clique no ícone de instalar na barra de endereço, à direita.</div></div></div>
+    <div class="dica">A instalação só aparece quando o aplicativo está publicado num endereço seguro (https). Abrindo o arquivo direto do computador, ele funciona normalmente, mas sem o atalho.</div>`,
+    [{txt:'Entendi', pri:true, acao:fecharModal}]);
+};
+
+/* abrir direto numa seção pelo atalho do sistema */
+(function(){ const h = (location.hash||'').slice(1);
+  if(['painel','clientes','catalogo','trabalhos','emitir','historico','modelos','ajustes'].includes(h)) V = h; })();
+
 store.carregar();
 let temaSalvo='escuro'; try{ temaSalvo = localStorage.getItem('lumiar-tema')||'escuro'; }catch(e){}
 aplicaTema(temaSalvo);
