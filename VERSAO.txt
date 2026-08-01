@@ -1,0 +1,29 @@
+LUMIAR · CENTRAL DE DOCUMENTOS
+Versão 1.5.0 — 29 de julho de 2026
+
+O QUE MUDOU NESTA VERSÃO
+  · Funciona sem internet: leitor de planilha e fontes embutidos
+  · Backup seletivo por parte: configuração, catálogo, modelos,
+    clientes, trabalhos e documentos emitidos
+  · Importação com opção de somar ao existente ou substituir
+  · Botão direto para exportar só o catálogo e os preços
+  · Versão visível dentro do aplicativo, em Ajustes
+
+VERSÕES ANTERIORES
+  1.3.0  pacote como carrinho · eventos por hora e valor fechado ·
+         lâminas somando no álbum · sugestões clicáveis
+  1.2.0  aplicativo instalável · saída em A4 · assinatura no aparelho ·
+         envio para assinatura online · data editável
+  1.1.0  editor visual de modelos · pré-visualização editável ·
+         painel com gráficos · tema claro e escuro
+  1.0.0  clientes, trabalhos, catálogo e nove documentos
+
+COMO CONFERIR A VERSÃO INSTALADA
+  Abra o aplicativo e veja o rodapé da barra lateral,
+  ou entre em Ajustes, no bloco "Sobre o aplicativo".
+  Toque em "O que mudou" para ver o histórico completo.
+
+ATUALIZAR
+  Substitua os seis arquivos no servidor e recarregue o aplicativo.
+  Os dados guardados no aparelho não são afetados.
+  Ainda assim, exporte um backup antes de atualizar.

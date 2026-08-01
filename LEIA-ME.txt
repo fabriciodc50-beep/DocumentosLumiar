@@ -1,0 +1,29 @@
+LUMIAR · CENTRAL DE DOCUMENTOS
+Aplicativo instalável no celular
+
+OS SEIS ARQUIVOS — todos na mesma pasta
+  index.html              o aplicativo
+  manifest.webmanifest    nome, cores e ícones do aplicativo
+  sw.js                   funcionamento sem internet
+  icone-192.png           ícone
+  icone-512.png           ícone grande
+  apple-touch-icon.png    ícone do iPhone
+
+PUBLICAR
+  Netlify:      arraste a pasta em app.netlify.com/drop
+  GitHub Pages: suba os seis arquivos na raiz do repositório
+
+  Os nomes precisam ficar exatamente assim, sem "(1)" no final.
+
+INSTALAR
+  Android / Chrome:  botão "Instalar" no topo do aplicativo,
+                     ou menu de três pontos, "Instalar aplicativo"
+  iPhone / Safari:   compartilhar, "Adicionar à Tela de Início"
+  Computador:        ícone de instalar na barra de endereço
+
+  Depois de instalado: abre em tela cheia, sem barra de navegador,
+  com ícone próprio, e funciona sem internet.
+
+DADOS
+  Ficam guardados no aparelho. Exporte um backup em Ajustes
+  de vez em quando e guarde em outro lugar.
